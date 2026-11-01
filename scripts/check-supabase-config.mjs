@@ -6,8 +6,16 @@ import { existsSync, readFileSync } from 'node:fs';
 
 const CONFIG = 'supabase/config.toml';
 const WEB_ORIGIN = 'http://localhost:5173';
-/** Exact local redirect URLs. The web app's auth routes (task A19) must use these paths. */
-const REDIRECT_URLS = [`${WEB_ORIGIN}/auth/callback`, `${WEB_ORIGIN}/auth/reset-password`];
+/** Exact local redirect URL: the web app's email-link page (task A19). */
+const REDIRECT_URLS = [`${WEB_ORIGIN}/auth/confirm`];
+/**
+ * Email templates whose links must open /auth/confirm with a token hash (task A19), so they work in
+ * any browser or device. Each must set the matching `type` for supabase.auth.verifyOtp.
+ */
+const EMAIL_TEMPLATES = {
+  confirmation: 'type=email',
+  recovery: 'type=recovery',
+};
 
 /**
  * Minimal reader for the subset of TOML that config.toml uses: [section] headers and
@@ -94,6 +102,24 @@ expect(
 expect('auth.enable_refresh_token_rotation', (v) => v === true, 'must be true');
 expect('auth.email.enable_signup', (v) => v === true, 'email sign-up must be enabled');
 expect('auth.email.enable_confirmations', (v) => v === true, 'email confirmation must be required');
+
+// Email templates (A19): links go to {{ .SiteURL }}/auth/confirm?token_hash=… with the right type.
+for (const [name, type] of Object.entries(EMAIL_TEMPLATES)) {
+  const key = `auth.email.template.${name}.content_path`;
+  const path = config[key];
+  if (typeof path !== 'string') {
+    errors.push(`${key}: the ${name} email template must be configured`);
+    continue;
+  }
+  // content_path is relative to the repo root (the folder that contains supabase/).
+  if (!existsSync(path)) {
+    errors.push(`${key}: ${path} does not exist`);
+    continue;
+  }
+  const html = readFileSync(path, 'utf8');
+  const link = '{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&' + type;
+  if (!html.includes(link)) errors.push(`${path}: must link to ${link}`);
+}
 
 // Local mail catcher, so confirmation and reset emails can be read at http://127.0.0.1:54324.
 // The section is [local_smtp] in current CLI versions and was [inbucket] in older ones.

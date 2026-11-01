@@ -1,0 +1,10 @@
+<!-- Sign-up confirmation email (supabase/config.toml [auth.email.template.confirmation]).
+     The link opens the web app's /auth/confirm page, which verifies the token with verifyOtp.
+     Unlike the default {{ .ConfirmationURL }}, this works in any browser or device, including
+     the in-app browser of an email app. Paste the same template into each hosted Supabase project. -->
+<h2>Confirm your email</h2>
+<p>Thanks for signing up to Social Seller Order Manager.</p>
+<p>
+  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">Confirm my email address</a>
+</p>
+<p>The link works once and expires in one hour. If you didn't sign up, you can ignore this email.</p>

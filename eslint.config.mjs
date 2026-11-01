@@ -68,6 +68,28 @@ export default tseslint.config(
       ],
     },
   },
+  // The browser uses Supabase for authentication only and never queries app tables
+  // (docs/DEVELOPMENT.md §8, §23 rule 9). Only src/lib/supabase.ts may create a client, and it
+  // exports the auth client alone. Type-only imports are fine.
+  {
+    files: ['apps/web/src/**/*.{ts,tsx}'],
+    ignores: ['apps/web/src/lib/supabase.ts'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@supabase/supabase-js',
+              message:
+                'Use the auth client from useAuth() (src/lib/supabase.ts). The browser must never query app tables.',
+              allowTypeImports: true,
+            },
+          ],
+        },
+      ],
+    },
+  },
   // React hooks rules for the web app. The two core rules are listed directly because the plugin's
   // preset names have changed between major versions.
   {

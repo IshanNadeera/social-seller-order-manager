@@ -1,0 +1,10 @@
+<!-- Password-reset email (supabase/config.toml [auth.email.template.recovery]).
+     The link opens the web app's /auth/confirm page with type=recovery, which signs the user in
+     for the reset and shows the new-password form. Paste the same template into each hosted
+     Supabase project. -->
+<h2>Reset your password</h2>
+<p>Someone asked to reset the password for your Social Seller Order Manager account.</p>
+<p>
+  <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery">Choose a new password</a>
+</p>
+<p>The link works once and expires in one hour. If you didn't ask for this, you can ignore this email: your password stays the same.</p>
