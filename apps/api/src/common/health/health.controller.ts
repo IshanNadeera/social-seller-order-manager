@@ -1,4 +1,5 @@
-import { Controller, Get, Header, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { Controller, Get, Header, HttpStatus, Logger, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import type { HealthResponse } from '@ssom/shared';
 import { Public } from '../../auth/public.decorator';
 import { PrismaService } from '../prisma.service';
@@ -10,6 +11,8 @@ export const HEALTH_DB_TIMEOUT_MS = 2_000;
  * GET /api/v1/health (docs/DEVELOPMENT.md §9.1, §11.7): process up + database ping.
  * No authentication. Reveals no configuration: no versions, hosts or error details, ever.
  * 200 when the database answers; 503 otherwise, so uptime monitors alert.
+ * The 503 is set directly, not thrown: health keeps its own body ({ status, database }) instead of the
+ * §9.7 error shape, which the global exception filter gives every thrown error.
  */
 @Public()
 @Controller('health')
@@ -20,10 +23,10 @@ export class HealthController {
 
   @Get()
   @Header('Cache-Control', 'no-store')
-  async check(): Promise<HealthResponse> {
+  async check(@Res({ passthrough: true }) res: Response): Promise<HealthResponse> {
     if (await this.databaseAnswers()) return { status: 'ok', database: 'ok' };
-    const body: HealthResponse = { status: 'error', database: 'unreachable' };
-    throw new ServiceUnavailableException(body);
+    res.status(HttpStatus.SERVICE_UNAVAILABLE);
+    return { status: 'error', database: 'unreachable' };
   }
 
   private async databaseAnswers(): Promise<boolean> {

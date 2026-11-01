@@ -81,6 +81,23 @@ Every tenant-owned query is scoped to the business of the verified membership. R
 - The database backs this up with composite foreign keys `(business_id, …)` (§8.1).
 - Every endpoint gets cross-tenant tests with `test/tenant-isolation.ts`: `createTwoTenants()` and `expectCrossTenant404()` (same 404 body as a random ID). `test/test-auth.ts` signs test tokens.
 
+## Validation, errors and logging (§9.7, §9.8, §11.7)
+
+- **Validation:** request bodies and query strings are checked against the shared Zod schemas in `@ssom/shared` (owner decision in A16, instead of class-validator DTOs). Schemas are strict, so unknown fields are **refused** with a field error, not dropped. This is the blueprint's `whitelist` + `forbidNonWhitelisted` rule:
+  - `@Body(new ZodBodyPipe(schema))` for bodies;
+  - `@Query(new ZodQueryPipe(schema))` for the whole query string. Query values are strings, so use `z.coerce` in the schema.
+- **One error shape.** Every error is `{ code, message, fieldErrors, requestId }` (`ApiErrorBody` in `@ssom/shared`). `HttpErrorFilter` (`src/common/http-error.filter.ts`) applies it globally, and `bodyParserErrorHandler` applies it to errors raised before routing: **413 `PAYLOAD_TOO_LARGE`** and **400 `INVALID_JSON`**.
+  - Throw `new XxxException({ code, message })` for your own codes. Bare framework exceptions get a default code per status (`src/common/errors.ts`).
+  - Anything that is not an `HttpException` becomes **500 `INTERNAL_ERROR`** with a generic message. Details and stack go to the log only.
+  - `GET /health` is the one exception: it keeps its own `{ status, database }` body.
+- **Request ID:** every response carries `X-Request-Id` (exposed to the browser through CORS), and the same ID is in the error body and the log line. A client may send its own (8–64 letters, digits or dashes); anything else is replaced with a new UUID.
+- **Logs:** pino writes JSON to stdout, at `LOG_LEVEL`. There is one line per request with `req.id`, method, path **without the query string**, status, `responseTime`, `userId` and `businessId`. 4xx requests log as `warn`, 5xx as `error`.
+  - Headers, bodies and query strings are never logged.
+  - Keys named `authorization`, `cookie`, `token`, `password`, `email` or `phone` are redacted wherever they appear.
+  - Never put names, phones, emails or addresses in a log message. Log IDs instead.
+- **Rate limit:** 300 requests per minute per signed-in user (`UserThrottlerGuard`, after `AuthGuard`). Public routes are limited per IP address. Over the limit: **429 `RATE_LIMITED`** with `Retry-After`. Limits are in memory, per API instance. When the API runs behind a proxy, set Express `trust proxy` at deploy time (F7) so IP limits see the real client.
+- Tests: `test/errors.spec.ts` and `test/throttle.spec.ts`. `test/http-app.ts` starts the real app with test keys and captures log lines.
+
 ## Environment
 
 - `src/common/env.ts` validates the environment with Zod before Nest starts (§10.4). If anything is missing or invalid, the API lists every problem by variable name (never by value) and exits. `apps/api/.env.example` documents each variable.

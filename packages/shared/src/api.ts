@@ -27,3 +27,15 @@ export interface MeResponse {
   role: MemberRole | null;
   business: MeBusiness | null;
 }
+
+/**
+ * Every API error has this shape (§9.7). `fieldErrors` maps field paths such as
+ * "items[0].quantity" to a plain-language message; it is empty when no single field is at fault.
+ * Quote `requestId` when reporting a problem: it finds the matching server log line.
+ */
+export interface ApiErrorBody {
+  code: string;
+  message: string;
+  fieldErrors: Record<string, string>;
+  requestId: string;
+}

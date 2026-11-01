@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import type { ArgumentMetadata } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { ZodBodyPipe } from './zod-body.pipe';
+import { ZodBodyPipe, ZodQueryPipe } from './zod-body.pipe';
 
 const body: ArgumentMetadata = { type: 'body' };
 
@@ -71,5 +71,41 @@ describe('ZodBodyPipe', () => {
 
   it('is only for request bodies', () => {
     expect(() => pipe.transform({}, { type: 'query' })).toThrow(/@Body\(\) only/);
+  });
+});
+
+describe('ZodQueryPipe', () => {
+  const querySchema = z.strictObject({
+    page: z.coerce.number().int().min(1, 'Must be 1 or more').default(1),
+    q: z.string().trim().max(100).optional(),
+  });
+  const pipe = new ZodQueryPipe(querySchema);
+  const query: ArgumentMetadata = { type: 'query' };
+
+  it('parses and coerces the query string', () => {
+    expect(pipe.transform({ page: '2', q: ' kasun ' }, query)).toEqual({ page: 2, q: 'kasun' });
+    expect(pipe.transform({}, query)).toEqual({ page: 1 });
+  });
+
+  it('refuses unknown query parameters, such as businessId', () => {
+    const error = errorOf(() => pipe.transform({ businessId: 'x' }, query));
+    expect((error as BadRequestException).getResponse()).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      fieldErrors: { businessId: 'This field is not allowed.' },
+    });
+  });
+
+  it('reports invalid values per field', () => {
+    const error = errorOf(() => pipe.transform({ page: '0' }, query));
+    expect((error as BadRequestException).getResponse()).toMatchObject({
+      fieldErrors: { page: 'Must be 1 or more' },
+    });
+  });
+
+  it('is only for the whole query string', () => {
+    expect(() => pipe.transform({}, { type: 'body' })).toThrow(/whole @Query\(\) only/);
+    expect(() => pipe.transform('1', { type: 'query', data: 'page' })).toThrow(
+      /whole @Query\(\) only/,
+    );
   });
 });

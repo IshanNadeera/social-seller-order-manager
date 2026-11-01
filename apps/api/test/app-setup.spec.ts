@@ -88,7 +88,7 @@ describe('HTTP setup', () => {
       expect(res.status).toBe(204);
       expect(headers['access-control-allow-origin']).toBe(WEB_ORIGIN);
       expect(headers['access-control-allow-headers']).toBe(
-        'Authorization,Content-Type,Idempotency-Key',
+        'Authorization,Content-Type,Idempotency-Key,X-Request-Id',
       );
       expect(headers['access-control-allow-credentials']).toBeUndefined();
     });
