@@ -34,6 +34,15 @@ export default tseslint.config(
       ],
     },
   },
+  // NestJS reads constructor parameter types at runtime (emitDecoratorMetadata). Telling the parser
+  // makes consistent-type-imports leave imports in decorated files alone, so its autofix cannot turn
+  // an injected class into `import type` and break dependency injection.
+  {
+    files: ['apps/api/**/*.{ts,mts}'],
+    languageOptions: {
+      parserOptions: { emitDecoratorMetadata: true, experimentalDecorators: true },
+    },
+  },
   // Plain JavaScript config files and scripts run in Node
   {
     files: ['**/*.{js,mjs,cjs}'],

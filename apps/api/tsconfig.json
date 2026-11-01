@@ -1,4 +1,14 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src"]
+  "compilerOptions": {
+    // NestJS runs as CommonJS on Node; "node20" emits CommonJS for .ts files in a package without "type": "module"
+    "module": "node20",
+    "moduleResolution": "nodenext",
+    // Nest's dependency injection reads constructor parameter types at runtime
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    // TypeScript 6 no longer loads every @types package by default
+    "types": ["node"]
+  },
+  "include": ["src", "test", "vitest.config.mts"]
 }

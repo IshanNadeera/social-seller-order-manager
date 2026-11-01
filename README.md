@@ -33,7 +33,7 @@ scripts/            Repository checks
 
 ## Common commands
 
-Use the Node version in `.nvmrc` (Node 24 LTS). Installs refuse to run on other versions.
+Use the Node version in `.nvmrc` (Node 26, the Active LTS line). Installs refuse to run on other versions.
 The dev, Prisma and Supabase commands work once those parts are set up (tasks A4–A9).
 
 ```bash
