@@ -86,7 +86,8 @@ export interface RouteUnderTest {
 
 /**
  * Asserts that `as` gets 404 for `foreignId` (a record of the other business), and that the
- * response is byte-for-byte the same as for a random ID that exists nowhere.
+ * response is the same as for a random ID that exists nowhere. Only `requestId` may differ: it is
+ * unique per request (§9.7) and says nothing about the record.
  */
 export async function expectCrossTenant404(
   server: App,
@@ -104,6 +105,15 @@ export async function expectCrossTenant404(
   const missing = await call(randomUUID());
   const where = `${route.method.toUpperCase()} ${route.path(':id')} as business ${as.businessId}`;
   expect(foreign.status, `${where} must answer 404 for another business's ID`).toBe(404);
-  expect(foreign.body, `${where} must not reveal that the record exists`).toEqual(missing.body);
+  expect(withoutRequestId(foreign.body), `${where} must not reveal that the record exists`).toEqual(
+    withoutRequestId(missing.body),
+  );
   expect(missing.status).toBe(404);
+}
+
+/** An error body without its per-request ID, for comparing two responses. */
+export function withoutRequestId(body: unknown): Record<string, unknown> {
+  const { requestId, ...rest } = body as Record<string, unknown>;
+  expect(typeof requestId, 'every error body carries a requestId').toBe('string');
+  return rest;
 }

@@ -19,7 +19,7 @@ import { PrismaService } from '../src/common/prisma.service';
 import { assertTouched, orNotFound, tenantWhere } from '../src/common/tenant';
 import { ZodBodyPipe } from '../src/common/zod-body.pipe';
 import { createTestAuth } from './test-auth';
-import { createTwoTenants, expectCrossTenant404 } from './tenant-isolation';
+import { createTwoTenants, expectCrossTenant404, withoutRequestId } from './tenant-isolation';
 import type { TwoTenants } from './tenant-isolation';
 
 const renameSchema = z.strictObject({ name: z.string().trim().min(1) });
@@ -129,7 +129,11 @@ describe('tenant isolation (pattern + helper)', () => {
   it('answers the same 404 for an ID that is not a UUID', async () => {
     const res = await request(server).get(route.get.path('not-a-uuid')).set(as(tenants.a.token));
     expect(res.status).toBe(404);
-    expect(res.body).toEqual({ code: 'NOT_FOUND', message: 'Not found.' });
+    expect(withoutRequestId(res.body)).toEqual({
+      code: 'NOT_FOUND',
+      message: 'Not found.',
+      fieldErrors: {},
+    });
   });
 
   it('ignores a businessId in the query string', async () => {
