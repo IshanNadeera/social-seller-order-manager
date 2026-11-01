@@ -14,6 +14,8 @@ export default tseslint.config(
       '**/coverage/',
       '**/playwright-report/',
       '**/test-results/',
+      // Generated Prisma client
+      'apps/api/src/generated/',
     ],
   },
   js.configs.recommended,

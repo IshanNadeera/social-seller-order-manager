@@ -5,5 +5,7 @@ coverage/
 playwright-report/
 test-results/
 package-lock.json
+# Generated Prisma client
+apps/api/src/generated/
 # The blueprint is kept exactly as approved
 docs/DEVELOPMENT.md

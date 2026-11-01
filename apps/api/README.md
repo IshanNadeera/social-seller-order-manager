@@ -12,6 +12,7 @@ cp apps/api/.env.example apps/api/.env   # once; the defaults match the local Su
 npm run dev -w apps/api                  # http://localhost:3000/api/v1/health
 npm test -w apps/api                     # unit + HTTP tests (Vitest)
 npm run build -w apps/api                # compile to apps/api/dist
+npm run test:db -w apps/api              # database tests; needs `npm run db:start` first
 ```
 
 ## How it is put together
@@ -20,7 +21,22 @@ npm run build -w apps/api                # compile to apps/api/dist
 - The API compiles to CommonJS with decorator metadata, which Nest's dependency injection needs. Because of that, a class injected through a constructor must be imported as a value (`import { X }`), never as `import type`; ESLint is configured to respect this.
 - Tests use Vitest with SWC (`vitest.config.mts`) so decorator metadata is emitted in tests too. Unit tests sit next to the code as `*.spec.ts`; HTTP-level tests live in `test/`.
 - One folder per module from §10.3 (`auth`, `onboarding`, `businesses`, `customers`, `products`, `orders`, `payments`, `deliveries`, `dashboard`, `reports`, `exports`, `idempotency`, `common`). Empty folders are filled by later tasks.
-- Prisma schema and migrations land in `prisma/` (tasks A9–A11).
+
+## Database (Prisma 7)
+
+- `prisma/schema.prisma` holds the models. Every model and enum lives in the private `app` schema and must declare `@@schema("app")`; `test/prisma-schema.spec.ts` fails otherwise. No connection URLs go in the schema.
+- `prisma.config.ts` configures the Prisma CLI. It loads `apps/api/.env` and connects with `DIRECT_URL` (a session-level connection; never the transaction pooler). Run Prisma through the npm scripts below so it runs from `apps/api`.
+- The running API connects through `PrismaService` (`src/common/prisma.service.ts`) with the `@prisma/adapter-pg` driver adapter, `DATABASE_URL` and a pool of at most 5 connections. Inject `PrismaService`; never create another `PrismaClient`. Every tenant query must still be scoped by `businessId` (§11.1).
+- The client is generated into `src/generated/prisma` (git-ignored) as CommonJS. `prisma generate` runs after every `npm install`; run it again after editing the schema if you are not migrating.
+
+```bash
+npm run prisma:generate -w apps/api   # rebuild the client after a schema change
+npm run prisma:validate -w apps/api   # check the schema
+npm run db:migrate -w apps/api        # create and apply a migration locally (prisma migrate dev)
+npm run db:deploy -w apps/api         # apply existing migrations (CI, staging, production)
+```
+
+Database tests (`test/**/*.db-spec.ts`) run only with `npm run test:db -w apps/api`, never in the default `npm test`, so unit tests never need a database.
 
 ## Environment
 

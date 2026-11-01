@@ -1,0 +1,19 @@
+// Prisma schema for the API (docs/DEVELOPMENT.md §8.4). Prisma 7.
+// Connection URLs are not set here: the CLI reads DIRECT_URL through prisma.config.ts, and the
+// running API passes DATABASE_URL to the PrismaPg adapter (src/common/prisma.service.ts).
+// Every model and enum must declare @@schema("app"); test/prisma-schema.spec.ts enforces it.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  // The API is compiled to CommonJS; the default ESM client uses import.meta, which CommonJS cannot run.
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+  // All application tables live in the private `app` schema, which Supabase's Data API does not expose (§8.1, §11.3).
+  schemas  = ["app"]
+}
+
+// Models and enums are added in task A10.

@@ -6,6 +6,9 @@ node_modules/
 .env.*
 !.env.example
 
+# Generated Prisma client (rebuilt by `prisma generate` after every npm install)
+apps/api/src/generated/
+
 # Build output
 dist/
 build/

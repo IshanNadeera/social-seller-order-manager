@@ -10,5 +10,12 @@
     // TypeScript 6 no longer loads every @types package by default
     "types": ["node"]
   },
-  "include": ["src", "test", "vitest.config.mts"]
+  "include": [
+    "src",
+    "test",
+    "prisma",
+    "prisma.config.ts",
+    "vitest.config.mts",
+    "vitest.db.config.mts"
+  ]
 }
