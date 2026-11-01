@@ -5,7 +5,9 @@
   "description": "Responsive web app for Social Seller Order Manager.",
   "type": "module",
   "scripts": {
+    "predev": "npm run build --prefix ../../packages/shared",
     "dev": "vite",
+    "prebuild": "npm run build --prefix ../../packages/shared",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json",
@@ -14,6 +16,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "7.0.1",
+    "@ssom/shared": "*",
     "@tanstack/react-query": "5.105.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",

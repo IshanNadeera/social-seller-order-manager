@@ -1,4 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Compiled to native ES modules that Node loads directly (the API require()s them on Node 26),
+    // so relative imports need explicit .js extensions, which this mode enforces.
+    "module": "node20",
+    "moduleResolution": "nodenext",
+    // Runs in both the browser and Node: no environment-specific types.
+    "types": []
+  },
   "include": ["src"]
 }

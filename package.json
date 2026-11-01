@@ -15,13 +15,15 @@
   "scripts": {
     "check:structure": "bash scripts/check-structure.sh",
     "check:workspaces": "node scripts/check-workspaces.mjs",
+    "build:shared": "npm run build -w @ssom/shared",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "npm run build:shared && npm run typecheck --workspaces --if-present",
     "test": "npm run check:structure && npm run check:workspaces && npm test --workspaces --if-present",
-    "check": "npm run lint && npm run format:check && npm run typecheck && npm test"
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm test",
+    "postinstall": "npm run build:shared"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

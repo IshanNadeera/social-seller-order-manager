@@ -2,8 +2,21 @@
   "name": "@ssom/shared",
   "version": "0.0.0",
   "private": true,
-  "description": "Shared types, enums and schemas (set up in A6).",
+  "description": "Enums, types and schemas shared by the web app and the API.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "5.0.5"
   }
 }
