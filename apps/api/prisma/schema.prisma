@@ -227,6 +227,9 @@ model Customer {
   @@unique([businessId, id])
   @@index([businessId, phoneNormalized])
   @@index([businessId, name])
+  // Trigram index for name search (§8.2). Created by the hand-written SQL in the initial migration
+  // (pg_trgm lives in the `extensions` schema); declared here so Prisma Migrate does not drop it.
+  @@index([name(ops: raw("extensions.gin_trgm_ops"))], type: Gin, map: "customers_name_trgm")
   @@map("customers")
   @@schema("app")
 }
