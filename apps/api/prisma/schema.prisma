@@ -1,7 +1,16 @@
-// Prisma schema for the API (docs/DEVELOPMENT.md §8.4). Prisma 7.
+// Prisma schema for the API (docs/DEVELOPMENT.md §8). Prisma 7.
 // Connection URLs are not set here: the CLI reads DIRECT_URL through prisma.config.ts, and the
 // running API passes DATABASE_URL to the PrismaPg adapter (src/common/prisma.service.ts).
-// Every model and enum must declare @@schema("app"); test/prisma-schema.spec.ts enforces it.
+//
+// Rules (enforced by test/prisma-schema.spec.ts):
+// - Every model and enum lives in the private `app` schema: @@schema("app").
+// - Every tenant table has business_id and UNIQUE (business_id, id). Links between tenant tables are
+//   composite foreign keys (business_id, x_id) -> (business_id, id), so the database itself rejects
+//   linking one business's rows to another's (§8.1, §11.1).
+// - Money is NUMERIC(12,2) (Prisma Decimal), never Float.
+// - Enum values match packages/shared/src/enums.ts.
+// CHECK constraints, partial unique indexes, the trigram index and RLS are hand-written SQL in the
+// initial migration (§8.5, task A11).
 
 generator client {
   provider     = "prisma-client"
@@ -16,4 +25,446 @@ datasource db {
   schemas  = ["app"]
 }
 
-// Models and enums are added in task A10.
+// ---------- Enums (§7, §8.2) ----------
+
+enum MemberRole {
+  OWNER
+  STAFF
+
+  @@map("member_role")
+  @@schema("app")
+}
+
+enum SourceChannel {
+  FACEBOOK
+  INSTAGRAM
+  TIKTOK
+  WHATSAPP
+  PHONE
+  WALK_IN
+  WEBSITE
+  OTHER
+
+  @@map("source_channel")
+  @@schema("app")
+}
+
+enum FulfilmentType {
+  DELIVERY
+  PICKUP
+
+  @@map("fulfilment_type")
+  @@schema("app")
+}
+
+enum OrderStatus {
+  NEW
+  PENDING_CONFIRMATION
+  CONFIRMED
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+  RETURNED
+
+  @@map("order_status")
+  @@schema("app")
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  PARTIALLY_REFUNDED
+  REFUNDED
+
+  @@map("payment_status")
+  @@schema("app")
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  COD
+  OTHER
+
+  @@map("payment_method")
+  @@schema("app")
+}
+
+enum PaymentType {
+  PAYMENT
+  REFUND
+
+  @@map("payment_type")
+  @@schema("app")
+}
+
+enum DeliveryStatus {
+  PENDING
+  DISPATCHED
+  DELIVERED
+  FAILED
+  RETURNED
+
+  @@map("delivery_status")
+  @@schema("app")
+}
+
+enum CodStatus {
+  NOT_APPLICABLE
+  PENDING
+  COLLECTED
+  SETTLED
+
+  @@map("cod_status")
+  @@schema("app")
+}
+
+enum OrderEventType {
+  ORDER_CREATED
+  ORDER_UPDATED
+  ORDER_STATUS_CHANGED
+  DELIVERY_STATUS_CHANGED
+  PAYMENT_RECORDED
+  REFUND_RECORDED
+  COD_STATUS_CHANGED
+  NOTE_ADDED
+
+  @@map("order_event_type")
+  @@schema("app")
+}
+
+// ---------- Identity & tenancy ----------
+
+/// Mirror of the Supabase Auth user, created during onboarding. No password data (§8.2).
+model User {
+  id         String    @id @db.Uuid // = Supabase auth.users.id (no FK into the Supabase-managed auth schema)
+  email      String    @unique // stored lower-cased
+  fullName   String?   @map("full_name")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  disabledAt DateTime? @map("disabled_at") @db.Timestamptz
+
+  memberships      BusinessMember[]
+  ordersCreated    Order[]          @relation("OrderCreatedBy")
+  paymentsRecorded Payment[]        @relation("PaymentRecordedBy")
+
+  @@map("users")
+  @@schema("app")
+}
+
+model Business {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name               String
+  contactPhone       String?   @map("contact_phone")
+  orderPrefix        String    @default("ORD") @map("order_prefix") @db.VarChar(6)
+  currency           String    @default("LKR") @db.Char(3)
+  timezone           String    @default("Asia/Colombo")
+  defaultDeliveryFee Decimal   @default(0) @map("default_delivery_fee") @db.Decimal(12, 2)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  archivedAt         DateTime? @map("archived_at") @db.Timestamptz
+
+  counter    BusinessCounter?
+  members    BusinessMember[]
+  customers  Customer[]
+  addresses  CustomerAddress[]
+  products   Product[]
+  orders     Order[]
+  items      OrderItem[]
+  payments   Payment[]
+  deliveries Delivery[]
+  events     OrderEvent[]
+
+  @@map("businesses")
+  @@schema("app")
+}
+
+/// Per-business order number sequence, incremented inside the order-creation transaction (§7.12).
+model BusinessCounter {
+  businessId   String   @id @map("business_id") @db.Uuid
+  nextOrderSeq Int      @default(1) @map("next_order_seq")
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+
+  @@map("business_counters")
+  @@schema("app")
+}
+
+model BusinessMember {
+  businessId String     @map("business_id") @db.Uuid
+  userId     String     @map("user_id") @db.Uuid
+  role       MemberRole
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([businessId, userId])
+  @@index([userId])
+  @@map("business_members")
+  @@schema("app")
+}
+
+// ---------- Catalogue & customers ----------
+
+model Customer {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId      String    @map("business_id") @db.Uuid
+  name            String
+  phoneDisplay    String?   @map("phone_display")
+  phoneNormalized String?   @map("phone_normalized")
+  email           String?
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  archivedAt      DateTime? @map("archived_at") @db.Timestamptz
+
+  business  Business          @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  addresses CustomerAddress[]
+  orders    Order[]
+
+  @@unique([businessId, id])
+  @@index([businessId, phoneNormalized])
+  @@index([businessId, name])
+  @@map("customers")
+  @@schema("app")
+}
+
+model CustomerAddress {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId    String    @map("business_id") @db.Uuid
+  customerId    String    @map("customer_id") @db.Uuid
+  label         String?
+  recipientName String    @map("recipient_name")
+  phone         String
+  addressLine1  String    @map("address_line_1")
+  addressLine2  String?   @map("address_line_2")
+  city          String?
+  district      String?
+  postalCode    String?   @map("postal_code")
+  isDefault     Boolean   @default(false) @map("is_default")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  archivedAt    DateTime? @map("archived_at") @db.Timestamptz
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  customer Customer @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: Restrict)
+
+  @@unique([businessId, id])
+  @@index([businessId, customerId])
+  @@map("customer_addresses")
+  @@schema("app")
+}
+
+model Product {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId   String    @map("business_id") @db.Uuid
+  name         String
+  sku          String?
+  description  String?
+  sellingPrice Decimal   @map("selling_price") @db.Decimal(12, 2)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  archivedAt   DateTime? @map("archived_at") @db.Timestamptz
+
+  business Business    @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  items    OrderItem[]
+
+  @@unique([businessId, id])
+  @@index([businessId, name])
+  @@map("products")
+  @@schema("app")
+}
+
+// ---------- Orders ----------
+
+model Order {
+  id                    String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId            String         @map("business_id") @db.Uuid
+  orderNumber           String         @map("order_number")
+  customerId            String?        @map("customer_id") @db.Uuid
+  sourceChannel         SourceChannel  @map("source_channel")
+  sourceNote            String?        @map("source_note")
+  fulfilmentType        FulfilmentType @default(DELIVERY) @map("fulfilment_type")
+  orderStatus           OrderStatus    @default(NEW) @map("order_status")
+  /// How the customer is expected to pay.
+  paymentMethod         PaymentMethod  @map("payment_method")
+  /// Calculated by recalculatePaymentSummary (§7.6); never set from client input.
+  paymentStatus         PaymentStatus  @default(UNPAID) @map("payment_status")
+  currency              String         @db.Char(3)
+  subtotal              Decimal        @db.Decimal(12, 2)
+  discountAmount        Decimal        @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  deliveryFee           Decimal        @default(0) @map("delivery_fee") @db.Decimal(12, 2)
+  totalAmount           Decimal        @map("total_amount") @db.Decimal(12, 2)
+  /// Cached sum of PAYMENT records; recalculated, never incremented.
+  amountPaid            Decimal        @default(0) @map("amount_paid") @db.Decimal(12, 2)
+  /// Cached sum of REFUND records; recalculated, never incremented.
+  amountRefunded        Decimal        @default(0) @map("amount_refunded") @db.Decimal(12, 2)
+  customerNameSnapshot  String         @map("customer_name_snapshot")
+  customerPhoneSnapshot String?        @map("customer_phone_snapshot")
+  notes                 String?
+  createdById           String         @map("created_by") @db.Uuid
+  createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  completedAt           DateTime?      @map("completed_at") @db.Timestamptz
+  cancelledAt           DateTime?      @map("cancelled_at") @db.Timestamptz
+  cancelReason          String?        @map("cancel_reason")
+
+  business  Business     @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  customer  Customer?    @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: Restrict)
+  createdBy User         @relation("OrderCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  items     OrderItem[]
+  payments  Payment[]
+  delivery  Delivery?
+  events    OrderEvent[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, orderNumber])
+  @@index([businessId, createdAt(sort: Desc)])
+  @@index([businessId, orderStatus, createdAt(sort: Desc)])
+  @@index([businessId, paymentStatus, createdAt(sort: Desc)])
+  @@index([businessId, sourceChannel, createdAt(sort: Desc)])
+  @@index([businessId, customerId])
+  @@map("orders")
+  @@schema("app")
+}
+
+/// Item lines with name, SKU and price snapshots. No per-line discount (§7.5, ADR-008).
+model OrderItem {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId          String   @map("business_id") @db.Uuid
+  orderId             String   @map("order_id") @db.Uuid
+  productId           String?  @map("product_id") @db.Uuid
+  position            Int      @db.SmallInt
+  productNameSnapshot String   @map("product_name_snapshot")
+  skuSnapshot         String?  @map("sku_snapshot")
+  quantity            Int
+  unitPrice           Decimal  @map("unit_price") @db.Decimal(12, 2)
+  lineTotal           Decimal  @map("line_total") @db.Decimal(12, 2)
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  order    Order    @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Restrict)
+  product  Product? @relation(fields: [businessId, productId], references: [businessId, id], onDelete: Restrict)
+
+  // §8.1: every tenant table has UNIQUE (business_id, id) (not in the §8.4 listing; added for consistency).
+  @@unique([businessId, id])
+  @@index([orderId])
+  @@map("order_items")
+  @@schema("app")
+}
+
+/// Payments and refunds. Insert-only: no update or delete endpoint (§7.7).
+model Payment {
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId        String        @map("business_id") @db.Uuid
+  orderId           String        @map("order_id") @db.Uuid
+  type              PaymentType
+  method            PaymentMethod
+  amount            Decimal       @db.Decimal(12, 2)
+  refundOfPaymentId String?       @map("refund_of_payment_id") @db.Uuid
+  reference         String?
+  notes             String?
+  recordedById      String        @map("recorded_by") @db.Uuid
+  /// When the money changed hands; may be backdated up to 90 days (§7.7).
+  occurredAt        DateTime      @map("occurred_at") @db.Timestamptz
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  business           Business   @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  order              Order      @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Restrict)
+  recordedBy         User       @relation("PaymentRecordedBy", fields: [recordedById], references: [id], onDelete: Restrict)
+  refundOf           Payment?   @relation("RefundOf", fields: [businessId, refundOfPaymentId], references: [businessId, id], onDelete: Restrict)
+  refunds            Payment[]  @relation("RefundOf")
+  settledCodDelivery Delivery?  @relation("DeliveryCodPayment")
+
+  @@unique([businessId, id])
+  @@index([businessId, occurredAt])
+  @@index([orderId])
+  @@map("payments")
+  @@schema("app")
+}
+
+/// One row per DELIVERY order, holding the order's own copy of the address (§7.8, §8.2).
+model Delivery {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId      String         @map("business_id") @db.Uuid
+  orderId         String         @unique @map("order_id") @db.Uuid
+  status          DeliveryStatus @default(PENDING)
+  recipientName   String         @map("recipient_name")
+  phone           String
+  addressLine1    String         @map("address_line_1")
+  addressLine2    String?        @map("address_line_2")
+  city            String?
+  district        String?
+  postalCode      String?        @map("postal_code")
+  /// Which saved address it was copied from. Informational only: no foreign key (§8.2).
+  sourceAddressId String?        @map("source_address_id") @db.Uuid
+  courierName     String?        @map("courier_name")
+  trackingNumber  String?        @map("tracking_number")
+  codAmount       Decimal        @default(0) @map("cod_amount") @db.Decimal(12, 2)
+  codStatus       CodStatus      @default(NOT_APPLICABLE) @map("cod_status")
+  codSettledAt    DateTime?      @map("cod_settled_at") @db.Timestamptz
+  /// The PAYMENT created when the COD was settled (§7.8).
+  codPaymentId    String?        @map("cod_payment_id") @db.Uuid
+  attemptCount    Int            @default(0) @map("attempt_count") @db.SmallInt
+  dispatchedAt    DateTime?      @map("dispatched_at") @db.Timestamptz
+  deliveredAt     DateTime?      @map("delivered_at") @db.Timestamptz
+  failedReason    String?        @map("failed_reason")
+  notes           String?
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  order      Order    @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Restrict)
+  // Not in the §8.4 listing: links the settlement payment with a tenant-scoped foreign key (§8.2 describes it).
+  codPayment Payment? @relation("DeliveryCodPayment", fields: [businessId, codPaymentId], references: [businessId, id], onDelete: Restrict)
+
+  // §8.1: every tenant table has UNIQUE (business_id, id) (not in the §8.4 listing; added for consistency).
+  @@unique([businessId, id])
+  @@unique([businessId, orderId]) // required for the composite 1:1 relation
+  @@unique([businessId, codPaymentId]) // a COD payment settles at most one delivery (NULLs allowed)
+  @@index([businessId, status, updatedAt(sort: Desc)])
+  @@index([businessId, codStatus])
+  @@map("deliveries")
+  @@schema("app")
+}
+
+/// Activity timeline. Insert-only. Never copy phone numbers or addresses into the JSON (§8.2).
+model OrderEvent {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId  String         @map("business_id") @db.Uuid
+  orderId     String         @map("order_id") @db.Uuid
+  /// Null for system-caused changes.
+  actorUserId String?        @map("actor_user_id") @db.Uuid
+  type        OrderEventType
+  oldValue    Json?          @map("old_value")
+  newValue    Json?          @map("new_value")
+  reason      String?
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  order    Order    @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Restrict)
+
+  // §8.1: every tenant table has UNIQUE (business_id, id) (not in the §8.4 listing; added for consistency).
+  @@unique([businessId, id])
+  @@index([orderId, createdAt])
+  @@map("order_events")
+  @@schema("app")
+}
+
+/// Stored responses for retried POST requests; rows older than 48 hours are deleted (§9.8, ADR-017).
+model IdempotencyKey {
+  businessId     String   @map("business_id") @db.Uuid
+  key            String
+  userId         String   @map("user_id") @db.Uuid
+  endpoint       String
+  requestHash    String   @map("request_hash")
+  responseStatus Int?     @map("response_status") @db.SmallInt
+  responseBody   Json?    @map("response_body")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@id([businessId, key])
+  @@map("idempotency_keys")
+  @@schema("app")
+}
