@@ -9,7 +9,10 @@ import { SignUpPage } from '../features/auth/SignUpPage';
 import { RedirectIfSignedIn, RequireAuth } from '../features/auth/guards';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { OnboardingPage } from '../features/onboarding/OnboardingPage';
+import { strings } from '../lib/strings';
+import { MorePage } from './MorePage';
 import { NotFoundPage } from './NotFoundPage';
+import { PlaceholderPage } from './PlaceholderPage';
 import { RootLayout } from './RootLayout';
 
 /**
@@ -52,6 +55,15 @@ export const routes: RouteObject[] = [
             element: <RootLayout />,
             children: [
               { index: true, element: <DashboardPage /> },
+              // Placeholders until their tasks land (orders C13–C15, customers B6, products B7,
+              // reports E3, settings E5), so every navigation link leads somewhere.
+              { path: 'orders', element: <PlaceholderPage title={strings.nav.orders} /> },
+              { path: 'orders/new', element: <PlaceholderPage title={strings.nav.newOrder} /> },
+              { path: 'customers', element: <PlaceholderPage title={strings.nav.customers} /> },
+              { path: 'products', element: <PlaceholderPage title={strings.nav.products} /> },
+              { path: 'reports', element: <PlaceholderPage title={strings.nav.reports} /> },
+              { path: 'settings', element: <PlaceholderPage title={strings.nav.settings} /> },
+              { path: 'more', element: <MorePage /> },
               { path: '*', element: <NotFoundPage /> },
             ],
           },

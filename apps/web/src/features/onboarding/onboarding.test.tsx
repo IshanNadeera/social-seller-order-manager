@@ -59,7 +59,8 @@ describe('onboarding', () => {
 
     expect(await screen.findByRole('heading', { name: strings.dashboard.title })).toBeInTheDocument();
     expect(screen.getByText(strings.dashboard.empty)).toBeInTheDocument();
-    expect(screen.getByText('Nimali Fashions')).toBeInTheDocument();
+    // Shown in the desktop sidebar and the mobile top bar (CSS shows one of them).
+    expect(screen.getAllByText('Nimali Fashions').length).toBeGreaterThan(0);
     expect(router.state.location.pathname).toBe('/');
 
     const post = api.calls.find((call) => call.method === 'POST');

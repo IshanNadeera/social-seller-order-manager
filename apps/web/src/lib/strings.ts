@@ -26,6 +26,21 @@ export const strings = {
     loggingOut: 'Logging out…',
     logOutFailed: 'We couldn’t log you out. Please try again.',
   },
+  nav: {
+    dashboard: 'Dashboard',
+    orders: 'Orders',
+    newOrder: 'New order',
+    customers: 'Customers',
+    products: 'Products',
+    reports: 'Reports',
+    settings: 'Settings',
+    more: 'More',
+  },
+  shell: {
+    mainNav: 'Main navigation',
+    skipToContent: 'Skip to main content',
+    comingSoon: 'This section is being built. It will appear here soon.',
+  },
   notices: {
     passwordChanged: 'Your password has been changed.',
   },

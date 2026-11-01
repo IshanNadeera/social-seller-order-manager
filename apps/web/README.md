@@ -75,3 +75,18 @@ Sign-up, log in, log out and password reset use `supabase-js` against Supabase A
   - The response (the new `/me`) goes straight into the cache, then the seller lands on the dashboard.
 - Tests run the real API client over a fake `fetch` (`src/test/fake-api.ts`), so they check the exact requests, including the Bearer header.
 
+## App shell and navigation (A21)
+
+- The navigation is defined once in `src/app/navigation.ts` (`NAV_ITEMS`, `DESKTOP_NAV`, `MOBILE_NAV`, `MORE_NAV`). Add a section there, not in the layout.
+- `src/app/RootLayout.tsx` is the frame for every signed-in screen (§6.1):
+  - **Desktop (md, 768 px and up):** a fixed side navigation with the business name, a **+ New order** button, Dashboard · Orders · Customers · Products · Reports · Settings, and Log out.
+  - **Mobile:** a top bar with the business name, and a bottom bar with Dashboard · Orders · **+ New order** (raised, centre) · Customers · More. **More** (`/more`) lists Products, Reports, Settings and Log out.
+  - The bottom bar sits above the iPhone home indicator (`env(safe-area-inset-bottom)`, with `viewport-fit=cover` in `index.html`). The page has bottom padding so the bar never covers content.
+- **Accessibility (§6.9):**
+  - the current section has `aria-current="page"`;
+  - every icon has a visible text label and is hidden from screen readers;
+  - a "Skip to main content" link comes first, and focus rings are visible;
+  - tap targets are at least 44 px.
+- Sections not built yet show `PlaceholderPage` (orders C13–C15, customers B6, products B7, reports E3, settings E5), so no link leads to "Page not found".
+- **All UI text lives in `src/lib/strings.ts`.** `src/lib/ui-strings.test.ts` parses every component with the TypeScript parser. It fails on text written between JSX tags, or in `aria-label`, `alt`, `title`, `placeholder`, `label`, `hint`, `message` or `pendingLabel`. Icons are inline SVGs in `src/components/icons.tsx`, with no icon package.
+
