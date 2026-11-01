@@ -46,6 +46,28 @@ export default tseslint.config(
       parserOptions: { emitDecoratorMetadata: true, experimentalDecorators: true },
     },
   },
+  // Tenant isolation (docs/DEVELOPMENT.md §11.1): the business scope comes only from
+  // @CurrentAuth() (req.auth), never from anything the client sends.
+  {
+    files: ['apps/api/src/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "MemberExpression[property.name='businessId'][object.type='MemberExpression'][object.property.name=/^(body|query|params|headers|cookies)$/]",
+          message:
+            'Never read businessId from the request. Use @CurrentAuth() / req.auth (docs/DEVELOPMENT.md §11.1).',
+        },
+        {
+          selector:
+            "CallExpression[callee.name=/^(Body|Query|Param|Headers)$/] > Literal[value='businessId']",
+          message:
+            'Never take businessId from the request. Use @CurrentAuth() (docs/DEVELOPMENT.md §11.1).',
+        },
+      ],
+    },
+  },
   // React hooks rules for the web app. The two core rules are listed directly because the plugin's
   // preset names have changed between major versions.
   {

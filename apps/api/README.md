@@ -71,6 +71,16 @@ The seed refuses to run when `NODE_ENV=production`, and against any non-local da
 - `GET /health` is public: it pings the database (2 s cap) and answers `200 {"status":"ok","database":"ok"}` or `503 {"status":"error","database":"unreachable"}`, never anything else (§11.7). The database pool gives up on a connection after 5 s instead of waiting forever.
 - In controllers, read the scope with `@CurrentAuth() auth: AuthContext` and the token user with `@CurrentUser() user: VerifiedUser`. **`auth.businessId` is the only source of tenant scope**: never take a business ID from the body, query or path (§11.1).
 
+## Tenant isolation (§11.1, §12.4)
+
+Every tenant-owned query is scoped to the business of the verified membership. Rules for every endpoint:
+
+- Controllers get the scope with `@CurrentAuth() auth: AuthContext` and pass `auth` as the **first argument** of each service method. A business ID never comes from the body, query, path or headers; ESLint rejects `req.body.businessId`, `@Body('businessId')` and similar, and strict request schemas reject a `businessId` field.
+- Queries use `tenantWhere(auth, { id, ... })`; creates use `tenantData(auth, data)` (`src/common/tenant.ts`). Both apply `businessId` last, so it always wins. Prefer `findFirst` / `updateMany` / `deleteMany` with `tenantWhere` over `findUnique({ where: { id } })`, which cannot be scoped.
+- "Not found" and "another business's record" must look identical: use `orNotFound(row)` / `assertTouched(result)`, and `@Param('id', IdParamPipe)` for IDs (a non-UUID also gets the same 404).
+- The database backs this up with composite foreign keys `(business_id, …)` (§8.1).
+- Every endpoint gets cross-tenant tests with `test/tenant-isolation.ts`: `createTwoTenants()` and `expectCrossTenant404()` (same 404 body as a random ID). `test/test-auth.ts` signs test tokens.
+
 ## Environment
 
 - `src/common/env.ts` validates the environment with Zod before Nest starts (§10.4). If anything is missing or invalid, the API lists every problem by variable name (never by value) and exits. `apps/api/.env.example` documents each variable.
