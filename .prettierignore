@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+package-lock.json
+# The blueprint is kept exactly as approved
+docs/DEVELOPMENT.md

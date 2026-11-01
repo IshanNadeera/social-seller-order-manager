@@ -1,0 +1,54 @@
+// ESLint flat config for all workspaces. See docs/DEVELOPMENT.md §13.3.
+import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import prettier from 'eslint-config-prettier';
+import globals from 'globals';
+
+export default tseslint.config(
+  {
+    ignores: [
+      '**/node_modules/',
+      '**/dist/',
+      '**/build/',
+      '**/coverage/',
+      '**/playwright-report/',
+      '**/test-results/',
+    ],
+  },
+  js.configs.recommended,
+  // Type-aware rules for TypeScript files (catches floating promises, unsafe any, etc.)
+  {
+    files: ['**/*.{ts,tsx,mts,cts}'],
+    extends: [tseslint.configs.recommendedTypeChecked],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+    },
+  },
+  // Plain JavaScript config files and scripts run in Node
+  {
+    files: ['**/*.{js,mjs,cjs}'],
+    languageOptions: { globals: globals.node },
+  },
+  {
+    rules: {
+      eqeqeq: ['error', 'always'],
+      'no-console': 'warn',
+    },
+  },
+  {
+    files: ['scripts/**'],
+    rules: { 'no-console': 'off' },
+  },
+  // Keep last: turns off rules that conflict with Prettier
+  prettier,
+);

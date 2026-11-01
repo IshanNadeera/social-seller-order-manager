@@ -12,7 +12,7 @@ The full specification is [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) (blueprin
 - **Web:** React, TypeScript, Vite, Tailwind CSS, TanStack Query, React Hook Form + Zod
 - **API:** NestJS, TypeScript, Prisma 7, decimal.js, jose
 - **Database and auth:** Supabase (PostgreSQL in a private `app` schema, Supabase Auth)
-- **Tooling:** npm workspaces, ESLint, Prettier, Jest/Vitest, Supertest, Playwright, GitHub Actions
+- **Tooling:** npm workspaces, TypeScript 6 (strict, shared `tsconfig.base.json`), ESLint (type-aware), Prettier, Jest/Vitest, Supertest, Playwright, GitHub Actions
 
 ## Repository layout
 
@@ -45,7 +45,12 @@ npm run dev -w apps/web             # start web
 npx -w apps/api prisma migrate dev  # create/apply local migration
 npm test --workspaces               # run all unit tests
 npx supabase start                  # start local Postgres, Auth and mail catcher (Docker)
+npm run lint                        # ESLint across all workspaces
+npm run format                      # format everything with Prettier
+npm run format:check                # check formatting (CI)
+npm run typecheck                   # tsc --noEmit in every workspace
 npm test                            # repository checks + all workspace tests
+npm run check                       # lint + format:check + typecheck + test (run before pushing)
 bash scripts/check-structure.sh     # check the repository layout
 ```
 

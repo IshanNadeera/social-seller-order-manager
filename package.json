@@ -15,6 +15,22 @@
   "scripts": {
     "check:structure": "bash scripts/check-structure.sh",
     "check:workspaces": "node scripts/check-workspaces.mjs",
-    "test": "npm run check:structure && npm run check:workspaces && npm test --workspaces --if-present"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run check:structure && npm run check:workspaces && npm test --workspaces --if-present",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.19.2",
+    "eslint": "10.14.0",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "17.13.0",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1"
   }
 }
