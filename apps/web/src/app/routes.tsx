@@ -1,4 +1,5 @@
 import type { RouteObject } from 'react-router';
+import { ONBOARDING_PATH, RequireBusiness } from '../features/account/AccountGate';
 import { AuthLayout } from '../features/auth/AuthLayout';
 import { ConfirmPage, RESET_PASSWORD_PATH } from '../features/auth/ConfirmPage';
 import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage';
@@ -7,12 +8,14 @@ import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
 import { SignUpPage } from '../features/auth/SignUpPage';
 import { RedirectIfSignedIn, RequireAuth } from '../features/auth/guards';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
+import { OnboardingPage } from '../features/onboarding/OnboardingPage';
 import { NotFoundPage } from './NotFoundPage';
 import { RootLayout } from './RootLayout';
 
 /**
  * Route table, shared by the browser router (App.tsx) and the tests' memory router.
  * Everything under "/" needs a signed-in user (RequireAuth); only the auth screens are public.
+ * The app itself also needs a business (RequireBusiness); until then the user is sent to /onboarding.
  */
 export const routes: RouteObject[] = [
   {
@@ -41,11 +44,17 @@ export const routes: RouteObject[] = [
     path: '/',
     element: <RequireAuth />,
     children: [
+      { path: ONBOARDING_PATH.slice(1), element: <OnboardingPage /> },
       {
-        element: <RootLayout />,
+        element: <RequireBusiness />,
         children: [
-          { index: true, element: <DashboardPage /> },
-          { path: '*', element: <NotFoundPage /> },
+          {
+            element: <RootLayout />,
+            children: [
+              { index: true, element: <DashboardPage /> },
+              { path: '*', element: <NotFoundPage /> },
+            ],
+          },
         ],
       },
     ],

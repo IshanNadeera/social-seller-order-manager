@@ -60,3 +60,18 @@ Sign-up, log in, log out and password reset use `supabase-js` against Supabase A
 2. `npm run dev -w apps/web`, then open http://localhost:5173/signup.
 3. Confirmation and reset emails arrive in Mailpit at http://127.0.0.1:54324.
 
+## Talking to the API (A20)
+
+- `src/lib/api-client.ts` is the only way to call the API. Components use `useApi()`, never `fetch()`.
+  - It reads the Supabase session on **every** request and sends `Authorization: Bearer <access token>`, so a refreshed token is always used. With no session it throws without sending anything.
+  - It sends JSON with no cookies (`credentials: 'omit'`), gives up after 20 s, and adds `Idempotency-Key` when asked (orders and payments, §9.8).
+  - Every failure becomes an `ApiError` with `{ status, code, message, fieldErrors, requestId }`. Server messages for 4xx are shown as they are, since the API writes them for sellers. 5xx and network problems get generic text. `requestId` is shown as a reference number for support (`ApiErrorMessage`).
+- Queries are retried once, and only after a network or server error (`shouldRetryQuery`). Mutations are never retried automatically.
+- `GET /me` is loaded by `useMe()`. Its cache key includes the user ID.
+- Routing:
+  - `RequireBusiness` waits for `/me` and sends users with `needsOnboarding` to `/onboarding`. If `/me` fails, it shows an error with Retry and Log out.
+  - `/onboarding` creates the business with `POST /onboarding`, using the **shared** `onboardingRequestSchema`, so the form and the API apply the same rules and messages.
+  - The order prefix is suggested from the business name until the seller edits it, and a live preview shows `NIM-0001`.
+  - The response (the new `/me`) goes straight into the cache, then the seller lands on the dashboard.
+- Tests run the real API client over a fake `fetch` (`src/test/fake-api.ts`), so they check the exact requests, including the Bearer header.
+
