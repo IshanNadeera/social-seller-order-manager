@@ -65,7 +65,11 @@ export function LoginPage() {
         <FormAlert tone="error">
           <p>{error.message}</p>
           {error.unconfirmed && (
-            <button type="button" onClick={() => void resendConfirmation()} className={`mt-1 ${linkClass}`}>
+            <button
+              type="button"
+              onClick={() => void resendConfirmation()}
+              className={`mt-1 ${linkClass}`}
+            >
               {s.login.resendConfirmation}
             </button>
           )}

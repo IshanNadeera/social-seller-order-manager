@@ -30,27 +30,37 @@ describe('routes (signed in)', () => {
     expect(await dashboardHeading()).toBeInTheDocument();
   });
 
-  it.each(['/login', '/signup', '/forgot-password'])('skips %s and goes to the app', async (path) => {
-    const router = renderApp(path, createFakeAuth(fakeSession()));
-    expect(await dashboardHeading()).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe('/');
-  });
+  it.each(['/login', '/signup', '/forgot-password'])(
+    'skips %s and goes to the app',
+    async (path) => {
+      const router = renderApp(path, createFakeAuth(fakeSession()));
+      expect(await dashboardHeading()).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe('/');
+    },
+  );
 });
 
 describe('protected routes (signed out)', () => {
-  it.each(['/', '/no-such-page', '/orders?status=READY'])('redirects %s to the login page', async (path) => {
-    const router = renderApp(path, createFakeAuth(null));
-    expect(await loginHeading()).toBeInTheDocument();
-    expect(router.state.location.pathname).toBe('/login');
-    expect(screen.queryByRole('heading', { name: strings.dashboard.title })).not.toBeInTheDocument();
-  });
+  it.each(['/', '/no-such-page', '/orders?status=READY'])(
+    'redirects %s to the login page',
+    async (path) => {
+      const router = renderApp(path, createFakeAuth(null));
+      expect(await loginHeading()).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe('/login');
+      expect(
+        screen.queryByRole('heading', { name: strings.dashboard.title }),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it('shows a loading state, not the page, while the session is being read', async () => {
     const auth = createFakeAuth(null);
     auth.getSession.mockReturnValueOnce(new Promise(() => undefined)); // never answers
     renderApp('/', auth);
     expect(await screen.findByRole('status')).toHaveTextContent(strings.common.loading);
-    expect(screen.queryByRole('heading', { name: strings.dashboard.title })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: strings.dashboard.title }),
+    ).not.toBeInTheDocument();
   });
 
   it('returns to the page the seller asked for after logging in', async () => {

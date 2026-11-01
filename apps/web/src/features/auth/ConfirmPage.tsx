@@ -20,7 +20,10 @@ function linkTypeOf(value: string | null): LinkType | null {
     : null;
 }
 
-type Outcome = { kind: 'verifying' } | { kind: 'invalid' } | { kind: 'failed'; expired: boolean; message: string };
+type Outcome =
+  | { kind: 'verifying' }
+  | { kind: 'invalid' }
+  | { kind: 'failed'; expired: boolean; message: string };
 
 /**
  * Target of the links in our confirmation and password-reset emails:
@@ -47,7 +50,11 @@ export function ConfirmPage() {
       try {
         const { error } = await client.verifyOtp({ token_hash: tokenHash, type });
         if (error) {
-          setOutcome({ kind: 'failed', expired: authErrorCode(error) === 'otp_expired', message: authErrorMessage(error) });
+          setOutcome({
+            kind: 'failed',
+            expired: authErrorCode(error) === 'otp_expired',
+            message: authErrorMessage(error),
+          });
           return;
         }
         void navigate(type === 'recovery' ? RESET_PASSWORD_PATH : HOME_PATH, { replace: true });

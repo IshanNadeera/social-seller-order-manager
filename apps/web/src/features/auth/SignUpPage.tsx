@@ -89,7 +89,13 @@ export function SignUpPage() {
   );
 }
 
-function CheckEmail({ email, onUseDifferentEmail }: { email: string; onUseDifferentEmail: () => void }) {
+function CheckEmail({
+  email,
+  onUseDifferentEmail,
+}: {
+  email: string;
+  onUseDifferentEmail: () => void;
+}) {
   const { client } = useAuth();
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [error, setError] = useState<string | null>(null);

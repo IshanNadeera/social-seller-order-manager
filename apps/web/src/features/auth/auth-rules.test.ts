@@ -68,7 +68,10 @@ describe('form schemas', () => {
   });
 
   it('puts the mismatch error on the confirmation field', () => {
-    const result = resetPasswordSchema.safeParse({ password: '12345678', confirmPassword: '12345679' });
+    const result = resetPasswordSchema.safeParse({
+      password: '12345678',
+      confirmPassword: '12345679',
+    });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.path).toEqual(['confirmPassword']);
   });

@@ -90,7 +90,10 @@ describe('sign up', () => {
     await type(s.fields.password, 'long enough');
     await type(s.fields.confirmPassword, 'long enough');
     await click(s.signUp.submit);
-    expect(auth.signUp).toHaveBeenCalledWith({ email: 'new.seller@example.test', password: 'long enough' });
+    expect(auth.signUp).toHaveBeenCalledWith({
+      email: 'new.seller@example.test',
+      password: 'long enough',
+    });
     expect(await screen.findByRole('heading', { name: s.checkEmail.title })).toBeInTheDocument();
     expect(screen.getByText(s.checkEmail.body('new.seller@example.test'))).toBeInTheDocument();
 
@@ -148,7 +151,9 @@ describe('email links (/auth/confirm)', () => {
     const auth = createFakeAuth(null);
     const router = renderApp('/auth/confirm?token_hash=abc123&type=email', auth);
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
-    expect(await screen.findByRole('heading', { name: strings.dashboard.title })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: strings.dashboard.title }),
+    ).toBeInTheDocument();
     expect(auth.verifyOtp).toHaveBeenCalledTimes(1);
     expect(auth.verifyOtp).toHaveBeenCalledWith({ token_hash: 'abc123', type: 'email' });
     expect(router.state.location.search).toBe(''); // the token is gone from the address bar
@@ -169,19 +174,27 @@ describe('email links (/auth/confirm)', () => {
       error: authError('otp_expired', 403) as never,
     } as never);
     renderApp('/auth/confirm?token_hash=old&type=recovery', auth);
-    expect(await screen.findByRole('heading', { name: s.confirm.expiredTitle })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: s.confirm.requestNewReset })).toHaveAttribute('href', '/forgot-password');
+    expect(
+      await screen.findByRole('heading', { name: s.confirm.expiredTitle }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: s.confirm.requestNewReset })).toHaveAttribute(
+      'href',
+      '/forgot-password',
+    );
   });
 
-  it.each(['/auth/confirm', '/auth/confirm?type=email', '/auth/confirm?token_hash=x&type=magiclink'])(
-    'refuses an incomplete or unknown link %s without calling Supabase',
-    async (path) => {
-      const auth = createFakeAuth(null);
-      renderApp(path, auth);
-      expect(await screen.findByRole('heading', { name: s.confirm.invalidTitle })).toBeInTheDocument();
-      expect(auth.verifyOtp).not.toHaveBeenCalled();
-    },
-  );
+  it.each([
+    '/auth/confirm',
+    '/auth/confirm?type=email',
+    '/auth/confirm?token_hash=x&type=magiclink',
+  ])('refuses an incomplete or unknown link %s without calling Supabase', async (path) => {
+    const auth = createFakeAuth(null);
+    renderApp(path, auth);
+    expect(
+      await screen.findByRole('heading', { name: s.confirm.invalidTitle }),
+    ).toBeInTheDocument();
+    expect(auth.verifyOtp).not.toHaveBeenCalled();
+  });
 });
 
 describe('reset password', () => {
@@ -201,8 +214,13 @@ describe('reset password', () => {
 
   it('offers a new link when opened without a valid reset session', async () => {
     renderApp('/auth/reset-password', createFakeAuth(null));
-    expect(await screen.findByRole('heading', { name: s.reset.noSessionTitle })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: s.reset.requestNew })).toHaveAttribute('href', '/forgot-password');
+    expect(
+      await screen.findByRole('heading', { name: s.reset.noSessionTitle }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: s.reset.requestNew })).toHaveAttribute(
+      'href',
+      '/forgot-password',
+    );
   });
 
   it('keeps the form and explains when the new password is the same as the old one', async () => {

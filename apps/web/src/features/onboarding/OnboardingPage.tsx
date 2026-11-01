@@ -33,9 +33,7 @@ const FIELDS = ['businessName', 'contactPhone', 'orderPrefix'] as const;
 export function OnboardingPage() {
   return (
     <WithMe>
-      {(me) =>
-        me.needsOnboarding ? <OnboardingForm /> : <Navigate to={HOME_PATH} replace />
-      }
+      {(me) => (me.needsOnboarding ? <OnboardingForm /> : <Navigate to={HOME_PATH} replace />)}
     </WithMe>
   );
 }
@@ -164,7 +162,11 @@ function OnboardingForm() {
 }
 
 /** Live example of the seller's order numbers (§6.8), e.g. "NIM-0001, then NIM-0002". */
-function PrefixPreview({ control }: { control: Control<OnboardingRequest, unknown, OnboardingInput> }) {
+function PrefixPreview({
+  control,
+}: {
+  control: Control<OnboardingRequest, unknown, OnboardingInput>;
+}) {
   const raw = useWatch({ control, name: 'orderPrefix' }) ?? '';
   const prefix = raw.trim().toUpperCase();
   const valid = ORDER_PREFIX_PATTERN.test(prefix);

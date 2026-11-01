@@ -3,9 +3,7 @@
 // Only public values belong here: everything in import.meta.env ships to the browser.
 import { z } from 'zod';
 
-const httpUrl = z
-  .url({ protocol: /^https?$/ })
-  .transform((url) => url.replace(/\/+$/, '')); // no trailing slash, so paths join cleanly
+const httpUrl = z.url({ protocol: /^https?$/ }).transform((url) => url.replace(/\/+$/, '')); // no trailing slash, so paths join cleanly
 
 const webEnvSchema = z.object({
   VITE_API_URL: httpUrl,

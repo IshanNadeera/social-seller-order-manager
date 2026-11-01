@@ -61,7 +61,9 @@ function defaultError(status: number): { code: string; message: string } {
   return { code: 'REQUEST_FAILED', message: m.generic };
 }
 
-function isErrorBody(value: unknown): value is Partial<ApiErrorBody> & { code: string; message: string } {
+function isErrorBody(
+  value: unknown,
+): value is Partial<ApiErrorBody> & { code: string; message: string } {
   if (typeof value !== 'object' || value === null) return false;
   const { code, message } = value as Record<string, unknown>;
   return typeof code === 'string' && typeof message === 'string';
@@ -70,7 +72,9 @@ function isErrorBody(value: unknown): value is Partial<ApiErrorBody> & { code: s
 function stringRecord(value: unknown): Record<string, string> {
   if (typeof value !== 'object' || value === null) return {};
   return Object.fromEntries(
-    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+    Object.entries(value).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string',
+    ),
   );
 }
 
@@ -79,7 +83,12 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   const fetchImpl: typeof fetch = config.fetch ?? ((input, init) => globalThis.fetch(input, init));
   const timeoutMs = config.timeoutMs ?? API_TIMEOUT_MS;
 
-  async function request<T>(method: string, path: string, body: unknown, options: RequestOptions = {}): Promise<T> {
+  async function request<T>(
+    method: string,
+    path: string,
+    body: unknown,
+    options: RequestOptions = {},
+  ): Promise<T> {
     if (!path.startsWith('/')) throw new Error(`API paths start with "/": ${path}`);
 
     // Read the session for every request, so a refreshed token is always the one sent.

@@ -29,9 +29,16 @@ const TEXT_PROPS = new Set([
 const HAS_LETTER = /\p{L}/u;
 
 export function findInlineText(fileName: string, source: string): string[] {
-  const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const file = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
   const found: string[] = [];
-  const where = (node: ts.Node) => `${fileName}:${file.getLineAndCharacterOfPosition(node.getStart()).line + 1}`;
+  const where = (node: ts.Node) =>
+    `${fileName}:${file.getLineAndCharacterOfPosition(node.getStart()).line + 1}`;
 
   const visit = (node: ts.Node) => {
     if (ts.isJsxText(node) && HAS_LETTER.test(node.text)) {
@@ -42,7 +49,10 @@ export function findInlineText(fileName: string, source: string): string[] {
       const literal =
         value && ts.isStringLiteral(value)
           ? value
-          : value && ts.isJsxExpression(value) && value.expression && ts.isStringLiteralLike(value.expression)
+          : value &&
+              ts.isJsxExpression(value) &&
+              value.expression &&
+              ts.isStringLiteralLike(value.expression)
             ? value.expression
             : undefined;
       if (literal && HAS_LETTER.test(literal.text)) {
@@ -61,7 +71,9 @@ describe('UI strings live in src/lib/strings.ts', () => {
   });
 
   it('has no inline user-facing text in any component', () => {
-    const problems = Object.entries(sources).flatMap(([name, source]) => findInlineText(name, source));
+    const problems = Object.entries(sources).flatMap(([name, source]) =>
+      findInlineText(name, source),
+    );
     expect(problems).toEqual([]);
   });
 
@@ -78,7 +90,11 @@ describe('UI strings live in src/lib/strings.ts', () => {
           {' '}·{' '}
         </div>
       );`;
-    expect(findInlineText('sample.tsx', sample).map((problem) => problem.replace(/^sample\.tsx:\d+ /, ''))).toEqual([
+    expect(
+      findInlineText('sample.tsx', sample).map((problem) =>
+        problem.replace(/^sample\.tsx:\d+ /, ''),
+      ),
+    ).toEqual([
       'text "Orders"',
       'aria-label="Search"',
       'placeholder="Type here"',

@@ -7,7 +7,12 @@ type Listener = (event: AuthChangeEvent, session: Session | null) => void;
 
 /** An AuthError-like value, as supabase-js returns it. */
 export function authError(code: string, status = 400) {
-  return Object.assign(new Error(code), { name: 'AuthApiError', code, status, __isAuthError: true });
+  return Object.assign(new Error(code), {
+    name: 'AuthApiError',
+    code,
+    status,
+    __isAuthError: true,
+  });
 }
 
 export function fakeSession(email = 'seller@example.test'): Session {
@@ -44,7 +49,15 @@ export function createFakeAuth(initial: Session | null = null) {
     getSession: vi.fn(() => ok({ session })),
     onAuthStateChange: vi.fn((listener: Listener) => {
       listeners.add(listener);
-      return { data: { subscription: { id: 'fake', callback: listener, unsubscribe: () => listeners.delete(listener) } } };
+      return {
+        data: {
+          subscription: {
+            id: 'fake',
+            callback: listener,
+            unsubscribe: () => listeners.delete(listener),
+          },
+        },
+      };
     }),
     signInWithPassword: vi.fn((_: { email: string; password: string }) => {
       const next = fakeSession();

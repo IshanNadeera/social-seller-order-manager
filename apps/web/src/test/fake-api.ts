@@ -44,7 +44,12 @@ export function newcomerMe(): MeResponse {
   return { ...memberMe(), needsOnboarding: true, role: null, business: null };
 }
 
-export function errorReply(status: number, code: string, message: string, fieldErrors: Record<string, string> = {}): FakeReply {
+export function errorReply(
+  status: number,
+  code: string,
+  message: string,
+  fieldErrors: Record<string, string> = {},
+): FakeReply {
   const body: ApiErrorBody = { code, message, fieldErrors, requestId: TEST_REQUEST_ID };
   return { status, body };
 }
@@ -58,7 +63,9 @@ export function createFakeApi(options: { me?: MeResponse } = {}) {
   on('GET', '/me', () => ({ status: 200, body: options.me ?? memberMe() }));
 
   const fetch = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
-    const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
+    const url = new URL(
+      typeof input === 'string' ? input : input instanceof URL ? input.href : input.url,
+    );
     if (!url.href.startsWith(TEST_API_URL)) throw new TypeError(`Unexpected URL ${url.href}`);
     const call: RecordedCall = {
       method: init.method ?? 'GET',

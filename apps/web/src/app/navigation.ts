@@ -35,20 +35,64 @@ export interface NavItem {
 
 const exactly = (path: string) => (pathname: string) => pathname === path;
 /** A section and everything below it, e.g. /customers and /customers/123. */
-const section = (path: string, except: string[] = []) => (pathname: string) =>
-  (pathname === path || pathname.startsWith(`${path}/`)) && !except.includes(pathname);
+const section =
+  (path: string, except: string[] = []) =>
+  (pathname: string) =>
+    (pathname === path || pathname.startsWith(`${path}/`)) && !except.includes(pathname);
 
 const nav = strings.nav;
 
 export const NAV_ITEMS = {
-  dashboard: { key: 'dashboard', path: PATHS.dashboard, label: nav.dashboard, Icon: HomeIcon, isActive: exactly(PATHS.dashboard) },
+  dashboard: {
+    key: 'dashboard',
+    path: PATHS.dashboard,
+    label: nav.dashboard,
+    Icon: HomeIcon,
+    isActive: exactly(PATHS.dashboard),
+  },
   // "+ New order" has its own button, so the Orders item is not also marked current there.
-  orders: { key: 'orders', path: PATHS.orders, label: nav.orders, Icon: OrdersIcon, isActive: section(PATHS.orders, [PATHS.newOrder]) },
-  newOrder: { key: 'newOrder', path: PATHS.newOrder, label: nav.newOrder, Icon: PlusIcon, isActive: exactly(PATHS.newOrder) },
-  customers: { key: 'customers', path: PATHS.customers, label: nav.customers, Icon: CustomersIcon, isActive: section(PATHS.customers) },
-  products: { key: 'products', path: PATHS.products, label: nav.products, Icon: ProductsIcon, isActive: section(PATHS.products) },
-  reports: { key: 'reports', path: PATHS.reports, label: nav.reports, Icon: ReportsIcon, isActive: section(PATHS.reports) },
-  settings: { key: 'settings', path: PATHS.settings, label: nav.settings, Icon: SettingsIcon, isActive: section(PATHS.settings) },
+  orders: {
+    key: 'orders',
+    path: PATHS.orders,
+    label: nav.orders,
+    Icon: OrdersIcon,
+    isActive: section(PATHS.orders, [PATHS.newOrder]),
+  },
+  newOrder: {
+    key: 'newOrder',
+    path: PATHS.newOrder,
+    label: nav.newOrder,
+    Icon: PlusIcon,
+    isActive: exactly(PATHS.newOrder),
+  },
+  customers: {
+    key: 'customers',
+    path: PATHS.customers,
+    label: nav.customers,
+    Icon: CustomersIcon,
+    isActive: section(PATHS.customers),
+  },
+  products: {
+    key: 'products',
+    path: PATHS.products,
+    label: nav.products,
+    Icon: ProductsIcon,
+    isActive: section(PATHS.products),
+  },
+  reports: {
+    key: 'reports',
+    path: PATHS.reports,
+    label: nav.reports,
+    Icon: ReportsIcon,
+    isActive: section(PATHS.reports),
+  },
+  settings: {
+    key: 'settings',
+    path: PATHS.settings,
+    label: nav.settings,
+    Icon: SettingsIcon,
+    isActive: section(PATHS.settings),
+  },
   // On mobile, "More" stays current while the seller is in one of the sections it lists.
   more: {
     key: 'more',

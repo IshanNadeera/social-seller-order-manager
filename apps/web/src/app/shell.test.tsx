@@ -11,7 +11,11 @@ import { NAV_ITEMS, PATHS } from './navigation';
 const nav = strings.nav;
 
 function renderShell(path = '/') {
-  return renderApp(path, createFakeAuth(fakeSession()), createFakeApi({ me: memberMe({ name: 'Nimali Fashions' }) }));
+  return renderApp(
+    path,
+    createFakeAuth(fakeSession()),
+    createFakeApi({ me: memberMe({ name: 'Nimali Fashions' }) }),
+  );
 }
 
 /** The side navigation lives in the desktop sidebar (<aside>); the bottom bar does not. */
@@ -38,14 +42,27 @@ describe('desktop side navigation (§6.1)', () => {
     renderShell();
     const sidebar = await desktopNav();
     const navigation = sidebar.getByRole('navigation', { name: strings.shell.mainNav });
-    expect(linkNames(navigation)).toEqual([nav.dashboard, nav.orders, nav.customers, nav.products, nav.reports, nav.settings]);
-    expect(within(navigation).getByRole('link', { name: nav.customers })).toHaveAttribute('href', PATHS.customers);
+    expect(linkNames(navigation)).toEqual([
+      nav.dashboard,
+      nav.orders,
+      nav.customers,
+      nav.products,
+      nav.reports,
+      nav.settings,
+    ]);
+    expect(within(navigation).getByRole('link', { name: nav.customers })).toHaveAttribute(
+      'href',
+      PATHS.customers,
+    );
   });
 
   it('has a prominent New order button, the business name and Log out', async () => {
     renderShell();
     const sidebar = await desktopNav();
-    expect(sidebar.getByRole('link', { name: nav.newOrder })).toHaveAttribute('href', PATHS.newOrder);
+    expect(sidebar.getByRole('link', { name: nav.newOrder })).toHaveAttribute(
+      'href',
+      PATHS.newOrder,
+    );
     expect(sidebar.getByText('Nimali Fashions')).toBeInTheDocument();
     expect(sidebar.getByRole('button', { name: strings.layout.logOut })).toBeInTheDocument();
   });
@@ -53,7 +70,10 @@ describe('desktop side navigation (§6.1)', () => {
   it('marks the current section for screen readers', async () => {
     renderShell('/customers');
     const sidebar = await desktopNav();
-    expect(sidebar.getByRole('link', { name: nav.customers })).toHaveAttribute('aria-current', 'page');
+    expect(sidebar.getByRole('link', { name: nav.customers })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
     expect(sidebar.getByRole('link', { name: nav.dashboard })).not.toHaveAttribute('aria-current');
   });
 });
@@ -62,8 +82,17 @@ describe('mobile bottom navigation (§6.1)', () => {
   it('has Dashboard, Orders, + New order (centre), Customers and More', async () => {
     renderShell();
     const bottom = await mobileNav();
-    expect(linkNames(bottom)).toEqual([nav.dashboard, nav.orders, nav.newOrder, nav.customers, nav.more]);
-    expect(within(bottom).getByRole('link', { name: nav.newOrder })).toHaveAttribute('href', PATHS.newOrder);
+    expect(linkNames(bottom)).toEqual([
+      nav.dashboard,
+      nav.orders,
+      nav.newOrder,
+      nav.customers,
+      nav.more,
+    ]);
+    expect(within(bottom).getByRole('link', { name: nav.newOrder })).toHaveAttribute(
+      'href',
+      PATHS.newOrder,
+    );
   });
 
   it('opens New order from the centre button', async () => {
@@ -71,10 +100,17 @@ describe('mobile bottom navigation (§6.1)', () => {
     const bottom = await mobileNav();
     await userEvent.click(within(bottom).getByRole('link', { name: nav.newOrder }));
     expect(router.state.location.pathname).toBe(PATHS.newOrder);
-    expect(await screen.findByRole('heading', { level: 1, name: nav.newOrder })).toBeInTheDocument();
-    expect(within(bottom).getByRole('link', { name: nav.newOrder })).toHaveAttribute('aria-current', 'page');
+    expect(
+      await screen.findByRole('heading', { level: 1, name: nav.newOrder }),
+    ).toBeInTheDocument();
+    expect(within(bottom).getByRole('link', { name: nav.newOrder })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
     // "Orders" is not also marked current on the new-order page.
-    expect(within(bottom).getByRole('link', { name: nav.orders })).not.toHaveAttribute('aria-current');
+    expect(within(bottom).getByRole('link', { name: nav.orders })).not.toHaveAttribute(
+      'aria-current',
+    );
   });
 
   it('lists Products, Reports, Settings and Log out under More, and keeps More current there', async () => {
@@ -82,13 +118,18 @@ describe('mobile bottom navigation (§6.1)', () => {
     const bottom = await mobileNav();
     await userEvent.click(within(bottom).getByRole('link', { name: nav.more }));
     const main = await screen.findByRole('main');
-    expect(await within(main).findByRole('heading', { level: 1, name: nav.more })).toBeInTheDocument();
+    expect(
+      await within(main).findByRole('heading', { level: 1, name: nav.more }),
+    ).toBeInTheDocument();
     expect(linkNames(main)).toEqual([nav.products, nav.reports, nav.settings]);
     expect(within(main).getByRole('button', { name: strings.layout.logOut })).toBeInTheDocument();
 
     await userEvent.click(within(main).getByRole('link', { name: nav.settings }));
     expect(router.state.location.pathname).toBe(PATHS.settings);
-    expect(within(bottom).getByRole('link', { name: nav.more })).toHaveAttribute('aria-current', 'page');
+    expect(within(bottom).getByRole('link', { name: nav.more })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
   });
 });
 
@@ -111,11 +152,18 @@ describe('navigation rules', () => {
 });
 
 describe('every link leads somewhere', () => {
-  it.each(Object.values(NAV_ITEMS).filter((item) => item.key !== 'dashboard'))('$path shows its page', async (item) => {
-    renderShell(item.path);
-    expect(await screen.findByRole('heading', { level: 1, name: item.label })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: strings.notFound.title })).not.toBeInTheDocument();
-  });
+  it.each(Object.values(NAV_ITEMS).filter((item) => item.key !== 'dashboard'))(
+    '$path shows its page',
+    async (item) => {
+      renderShell(item.path);
+      expect(
+        await screen.findByRole('heading', { level: 1, name: item.label }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: strings.notFound.title }),
+      ).not.toBeInTheDocument();
+    },
+  );
 });
 
 describe('keyboard use (§6.9)', () => {

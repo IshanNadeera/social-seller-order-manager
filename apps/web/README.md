@@ -89,4 +89,3 @@ Sign-up, log in, log out and password reset use `supabase-js` against Supabase A
   - tap targets are at least 44 px.
 - Sections not built yet show `PlaceholderPage` (orders C13–C15, customers B6, products B7, reports E3, settings E5), so no link leads to "Page not found".
 - **All UI text lives in `src/lib/strings.ts`.** `src/lib/ui-strings.test.ts` parses every component with the TypeScript parser. It fails on text written between JSX tags, or in `aria-label`, `alt`, `title`, `placeholder`, `label`, `hint`, `message` or `pendingLabel`. Icons are inline SVGs in `src/components/icons.tsx`, with no icon package.
-

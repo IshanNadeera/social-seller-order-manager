@@ -54,6 +54,23 @@ npm run check                       # lint + format:check + typecheck + test (ru
 bash scripts/check-structure.sh     # check the repository layout
 ```
 
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every pull request and every push to `main` (§13.3). There are four jobs, run in parallel so one failure never hides another:
+
+| Job           | What it runs                                                                                                                                        |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checks`      | `npm ci` → `npm run lint` → `npm run format:check` → `npm run typecheck` → `npm test`                                                               |
+| `integration` | PostgreSQL 17 service → `scripts/ci/supabase-roles.sql` → `npm run db:deploy -w apps/api` (`prisma migrate deploy`) → `npm run test:db -w apps/api` |
+| `build`       | `npm run build -w apps/web` and `npm run build -w apps/api`                                                                                         |
+| `audit`       | `npm audit --audit-level=high`                                                                                                                      |
+
+- The integration job uses a throwaway database with fake local values only. No repository secrets are used.
+- A plain PostgreSQL lacks Supabase's `anon`, `authenticated` and `service_role` roles, so `supabase-roles.sql` creates them first. The migration then really has to lock them out of `app`, and `migration.db-spec.ts` checks it.
+- Actions are pinned to full commit SHAs, and permissions are read-only.
+- `npm run check:ci` (part of `npm test`) fails if a required step is removed, an action is unpinned, the order roles → migrate → tests changes, or secrets appear.
+- To see the integration steps locally: `npm run db:deploy -w apps/api && npm run test:db -w apps/api` against the local Supabase stack.
+
 ## Ground rules
 
 - Never commit `.env` files, Supabase keys or real customer data. Only `.env.example` is tracked.

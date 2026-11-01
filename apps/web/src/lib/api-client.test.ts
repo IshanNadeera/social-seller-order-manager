@@ -15,7 +15,11 @@ function json(status: number, body: unknown, headers: Record<string, string> = {
 function setup(reply: () => Response | Promise<Response> = () => json(200, { ok: true })) {
   const auth = createFakeAuth(fakeSession());
   const fetch = vi.fn((_url: string, _init: RequestInit) => Promise.resolve(reply()));
-  const api = createApiClient({ baseUrl: BASE, auth: auth.client, fetch: fetch as unknown as typeof globalThis.fetch });
+  const api = createApiClient({
+    baseUrl: BASE,
+    auth: auth.client,
+    fetch: fetch as unknown as typeof globalThis.fetch,
+  });
   const sent = () => {
     const [url, init] = fetch.mock.calls.at(-1) ?? [];
     return { url, init, headers: (init?.headers ?? {}) as Record<string, string> };
@@ -92,7 +96,13 @@ describe('API client', () => {
   });
 
   it('never shows server details for a 5xx, and falls back when the body is not ours', async () => {
-    const proxy = setup(() => new Response('<html>Bad gateway</html>', { status: 502, headers: { 'X-Request-Id': 'req-2' } }));
+    const proxy = setup(
+      () =>
+        new Response('<html>Bad gateway</html>', {
+          status: 502,
+          headers: { 'X-Request-Id': 'req-2' },
+        }),
+    );
     expect(await caught(proxy.api.get('/me'))).toMatchObject({
       status: 502,
       code: 'SERVER_ERROR',
@@ -100,15 +110,29 @@ describe('API client', () => {
       requestId: 'req-2',
     });
 
-    const ours = setup(() => json(500, { code: 'INTERNAL_ERROR', message: 'Something went wrong on our side.', fieldErrors: {}, requestId: 'req-3' }));
-    expect(await caught(ours.api.get('/me'))).toMatchObject({ code: 'INTERNAL_ERROR', message: strings.api.serverError });
+    const ours = setup(() =>
+      json(500, {
+        code: 'INTERNAL_ERROR',
+        message: 'Something went wrong on our side.',
+        fieldErrors: {},
+        requestId: 'req-3',
+      }),
+    );
+    expect(await caught(ours.api.get('/me'))).toMatchObject({
+      code: 'INTERNAL_ERROR',
+      message: strings.api.serverError,
+    });
   });
 
   it('reports a network failure plainly', async () => {
     const { api } = setup(() => {
       throw new TypeError('Failed to fetch');
     });
-    expect(await caught(api.get('/me'))).toMatchObject({ status: 0, code: 'NETWORK_ERROR', message: strings.api.network });
+    expect(await caught(api.get('/me'))).toMatchObject({
+      status: 0,
+      code: 'NETWORK_ERROR',
+      message: strings.api.network,
+    });
   });
 
   it('gives up after the timeout', async () => {
@@ -116,11 +140,22 @@ describe('API client', () => {
     const hang = vi.fn(
       (_url: string, init: RequestInit) =>
         new Promise<Response>((_resolve, reject) => {
-          init.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+          init.signal?.addEventListener('abort', () =>
+            reject(new DOMException('Aborted', 'AbortError')),
+          );
         }),
     );
-    const api = createApiClient({ baseUrl: BASE, auth: auth.client, fetch: hang as unknown as typeof fetch, timeoutMs: 20 });
-    expect(await caught(api.get('/me'))).toMatchObject({ status: 0, code: 'TIMEOUT', message: strings.api.timeout });
+    const api = createApiClient({
+      baseUrl: BASE,
+      auth: auth.client,
+      fetch: hang as unknown as typeof fetch,
+      timeoutMs: 20,
+    });
+    expect(await caught(api.get('/me'))).toMatchObject({
+      status: 0,
+      code: 'TIMEOUT',
+      message: strings.api.timeout,
+    });
   });
 
   it('passes a cancellation by the caller through unchanged', async () => {
@@ -128,10 +163,16 @@ describe('API client', () => {
     const hang = vi.fn(
       (_url: string, init: RequestInit) =>
         new Promise<Response>((_resolve, reject) => {
-          init.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+          init.signal?.addEventListener('abort', () =>
+            reject(new DOMException('Aborted', 'AbortError')),
+          );
         }),
     );
-    const api = createApiClient({ baseUrl: BASE, auth: auth.client, fetch: hang as unknown as typeof fetch });
+    const api = createApiClient({
+      baseUrl: BASE,
+      auth: auth.client,
+      fetch: hang as unknown as typeof fetch,
+    });
     const controller = new AbortController();
     const request = api.get('/me', { signal: controller.signal });
     controller.abort();

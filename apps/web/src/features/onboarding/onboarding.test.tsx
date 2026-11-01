@@ -2,7 +2,13 @@ import { screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { strings } from '../../lib/strings';
-import { createFakeApi, errorReply, memberMe, newcomerMe, TEST_REQUEST_ID } from '../../test/fake-api';
+import {
+  createFakeApi,
+  errorReply,
+  memberMe,
+  newcomerMe,
+  TEST_REQUEST_ID,
+} from '../../test/fake-api';
 import { createFakeAuth, fakeSession } from '../../test/fake-auth';
 import { renderApp } from '../../test/render-app';
 import { toOnboardingRequest } from './OnboardingPage';
@@ -50,14 +56,19 @@ describe('onboarding', () => {
 
   it('creates the business with the Bearer token and lands on the empty dashboard', async () => {
     const { api, auth } = newcomer();
-    api.on('POST', '/onboarding', () => ({ status: 201, body: memberMe({ name: 'Nimali Fashions' }) }));
+    api.on('POST', '/onboarding', () => ({
+      status: 201,
+      body: memberMe({ name: 'Nimali Fashions' }),
+    }));
     const router = renderApp('/onboarding', auth, api);
     await screen.findByRole('heading', { name: s.title });
     await userEvent.type(field(s.businessName), '  Nimali Fashions ');
     await userEvent.type(field(s.contactPhone), '077 123 4567');
     await userEvent.click(screen.getByRole('button', { name: s.submit }));
 
-    expect(await screen.findByRole('heading', { name: strings.dashboard.title })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: strings.dashboard.title }),
+    ).toBeInTheDocument();
     expect(screen.getByText(strings.dashboard.empty)).toBeInTheDocument();
     // Shown in the desktop sidebar and the mobile top bar (CSS shows one of them).
     expect(screen.getAllByText('Nimali Fashions').length).toBeGreaterThan(0);
@@ -105,7 +116,8 @@ describe('onboarding', () => {
 
   it('explains other failures with a reference number and keeps the input', async () => {
     const { api, auth } = newcomer();
-    const message = 'This email address is already linked to another account. Please contact support.';
+    const message =
+      'This email address is already linked to another account. Please contact support.';
     api.on('POST', '/onboarding', () => errorReply(409, 'EMAIL_IN_USE', message));
     renderApp('/onboarding', auth, api);
     await screen.findByRole('heading', { name: s.title });
@@ -119,7 +131,9 @@ describe('onboarding', () => {
 
   it('sends a seller who already has a business from /onboarding to the dashboard', async () => {
     const router = renderApp('/onboarding', createFakeAuth(fakeSession()), createFakeApi());
-    expect(await screen.findByRole('heading', { name: strings.dashboard.title })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: strings.dashboard.title }),
+    ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/');
   });
 
@@ -129,11 +143,17 @@ describe('onboarding', () => {
     api.on('GET', '/me', () => {
       failures += 1;
       return failures === 1
-        ? errorReply(403, 'ACCOUNT_DISABLED', 'This account has been disabled. Please contact support.')
+        ? errorReply(
+            403,
+            'ACCOUNT_DISABLED',
+            'This account has been disabled. Please contact support.',
+          )
         : { status: 200, body: memberMe() };
     });
     renderApp('/', createFakeAuth(fakeSession()), api);
-    expect(await screen.findByRole('heading', { name: strings.account.loadFailedTitle })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: strings.account.loadFailedTitle }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('This account has been disabled.');
     expect(screen.getByRole('button', { name: strings.layout.logOut })).toBeInTheDocument();
 
@@ -146,7 +166,9 @@ describe('onboarding', () => {
 
 describe('toOnboardingRequest', () => {
   it('leaves out an empty phone and keeps the rest', () => {
-    expect(toOnboardingRequest({ businessName: 'A B', contactPhone: null, orderPrefix: 'AB' })).toEqual({
+    expect(
+      toOnboardingRequest({ businessName: 'A B', contactPhone: null, orderPrefix: 'AB' }),
+    ).toEqual({
       businessName: 'A B',
       orderPrefix: 'AB',
     });

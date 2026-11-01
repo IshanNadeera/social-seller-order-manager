@@ -18,7 +18,11 @@ export function WithMe({ children }: { children: (me: MeResponse) => ReactNode }
   if (me.isPending) return <FullPageStatus message={strings.common.loading} />;
   if (me.isError) {
     return (
-      <AccountLoadError error={me.error} retrying={me.isFetching} onRetry={() => void me.refetch()} />
+      <AccountLoadError
+        error={me.error}
+        retrying={me.isFetching}
+        onRetry={() => void me.refetch()}
+      />
     );
   }
   return <>{children(me.data)}</>;
