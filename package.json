@@ -15,15 +15,19 @@
   "scripts": {
     "check:structure": "bash scripts/check-structure.sh",
     "check:workspaces": "node scripts/check-workspaces.mjs",
+    "check:supabase": "node scripts/check-supabase-config.mjs",
     "build:shared": "npm run build -w @ssom/shared",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "npm run build:shared && npm run typecheck --workspaces --if-present",
-    "test": "npm run check:structure && npm run check:workspaces && npm test --workspaces --if-present",
+    "test": "npm run check:structure && npm run check:workspaces && npm run check:supabase && npm test --workspaces --if-present",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm test",
-    "postinstall": "npm run build:shared"
+    "postinstall": "npm run build:shared",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:status": "supabase status"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
@@ -33,6 +37,7 @@
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.13.0",
     "prettier": "3.9.10",
+    "supabase": "2.122.0",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.1"
   }
