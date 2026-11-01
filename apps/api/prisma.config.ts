@@ -24,6 +24,8 @@ export default defineConfig({
   schema: 'prisma/schema.prisma',
   migrations: {
     path: 'prisma/migrations',
+    // Fake demo data for local development (prisma/seed.ts). Run: npm run db:seed -w apps/api
+    seed: 'tsx prisma/seed.ts',
   },
   datasource: {
     url: directUrl,

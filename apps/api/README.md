@@ -34,9 +34,27 @@ npm run prisma:generate -w apps/api   # rebuild the client after a schema change
 npm run prisma:validate -w apps/api   # check the schema
 npm run db:migrate -w apps/api        # create and apply a migration locally (prisma migrate dev)
 npm run db:deploy -w apps/api         # apply existing migrations (CI, staging, production)
+npm run db:seed -w apps/api           # add or refresh the fake demo business (local only)
 ```
 
 Database tests (`test/**/*.db-spec.ts`) run only with `npm run test:db -w apps/api`, never in the default `npm test`, so unit tests never need a database.
+
+### Migrations
+
+Migrations are forward-only and reviewed by hand (§8.3, §11.6). Prisma cannot express CHECK constraints, partial indexes, grants or RLS, so those are hand-written SQL appended to the migration Prisma generates (§8.5, ADR-004). `test/migration.db-spec.ts` checks all of them against the database.
+
+1. Change `prisma/schema.prisma`.
+2. `npm run db:migrate -w apps/api -- --create-only --name <what_changed>` generates the SQL without applying it.
+3. Review `prisma/migrations/<timestamp>_<name>/migration.sql`. If it adds a table, append the RLS block from the initial migration so the new table has row-level security too. If it drops a hand-written index or constraint, remove that line. Prisma drops any non-partial index it does not find in the schema, so declare such indexes in `schema.prisma` (as `customers_name_trgm` is).
+4. `npm run db:migrate -w apps/api` applies it, then `npm run test:db -w apps/api`.
+
+Never edit a migration that has been applied anywhere else; add a new one.
+
+### Demo data
+
+`npm run db:seed -w apps/api` creates or refreshes a fake demo business ("Demo Boutique", prefix `DEMO`) with an owner, customers, addresses and products (`prisma/demo-data.ts`). It is safe to run repeatedly and never resets the order counter. Everything in it is fictional: surnames are "Demo", emails use `example.test`, phones are `077 000 00xx` placeholders. Never add real customer data (§13.2).
+
+The seed refuses to run when `NODE_ENV=production`, and against any non-local database unless `SEED_ALLOW_REMOTE=true` is set for that one command (staging with fake data only). The demo owner exists only in `app.users`, not in Supabase Auth, so you cannot log in as them; real accounts come from sign-up and onboarding (A16, A19).
 
 ## Environment
 

@@ -17,7 +17,8 @@
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
     "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy"
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed"
   },
   "dependencies": {
     "@nestjs/common": "12.3.2",
@@ -39,6 +40,7 @@
     "@types/supertest": "7.2.1",
     "prisma": "7.10.1",
     "supertest": "7.3.1",
+    "tsx": "4.23.15",
     "unplugin-swc": "2.0.0",
     "vitest": "5.0.5"
   }
