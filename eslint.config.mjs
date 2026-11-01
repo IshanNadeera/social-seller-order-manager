@@ -3,6 +3,7 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
 import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
 
 export default tseslint.config(
   {
@@ -41,6 +42,16 @@ export default tseslint.config(
     files: ['apps/api/**/*.{ts,mts}'],
     languageOptions: {
       parserOptions: { emitDecoratorMetadata: true, experimentalDecorators: true },
+    },
+  },
+  // React hooks rules for the web app. The two core rules are listed directly because the plugin's
+  // preset names have changed between major versions.
+  {
+    files: ['apps/web/**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': reactHooks },
+    rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
     },
   },
   // Plain JavaScript config files and scripts run in Node
