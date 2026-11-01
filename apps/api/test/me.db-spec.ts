@@ -52,7 +52,10 @@ describe('GET /me and GET /health with the database', () => {
       .overrideProvider(JWKS)
       .useValue(createLocalJWKSet({ keys: [jwk] }))
       .compile();
-    app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false, logger: false });
+    app = moduleRef.createNestApplication<NestExpressApplication>({
+      bodyParser: false,
+      logger: false,
+    });
     configureApp(app, env);
     await app.init();
     server = app.getHttpServer();
@@ -61,7 +64,11 @@ describe('GET /me and GET /health with the database', () => {
     await prisma.user.createMany({
       data: [
         { id: user.member, email: `me-member-${user.member}@example.test` },
-        { id: user.disabled, email: `me-disabled-${user.disabled}@example.test`, disabledAt: new Date() },
+        {
+          id: user.disabled,
+          email: `me-disabled-${user.disabled}@example.test`,
+          disabledAt: new Date(),
+        },
         { id: user.renamed, email: `me-old-${user.renamed}@example.test` },
       ],
     });

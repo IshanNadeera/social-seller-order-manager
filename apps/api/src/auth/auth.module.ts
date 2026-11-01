@@ -31,6 +31,6 @@ export const JWKS = Symbol('JWKS');
     MeService,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
-  exports: [SupabaseJwtVerifier],
+  exports: [SupabaseJwtVerifier, MeService],
 })
 export class AuthModule {}
