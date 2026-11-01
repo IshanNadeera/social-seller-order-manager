@@ -56,6 +56,15 @@ Never edit a migration that has been applied anywhere else; add a new one.
 
 The seed refuses to run when `NODE_ENV=production`, and against any non-local database unless `SEED_ALLOW_REMOTE=true` is set for that one command (staging with fake data only). The demo owner exists only in `app.users`, not in Supabase Auth, so you cannot log in as them; real accounts come from sign-up and onboarding (A16, A19).
 
+## Authentication
+
+- Supabase Auth issues access tokens in the browser; the API only verifies them (§11.2, ADR-003). It never handles passwords and holds no shared JWT secret.
+- `src/auth/auth.guard.ts` is a **global** guard: every route requires `Authorization: Bearer <token>` unless the route or controller is marked `@Public()` (today only `GET /health`). New routes are protected by default.
+- `src/auth/jwt-verifier.ts` checks the signature against Supabase's public keys (`{SUPABASE_URL}/auth/v1/.well-known/jwks.json`, ES256/RS256 only), `iss` = `SUPABASE_JWT_ISSUER`, `aud` = `authenticated`, expiry and not-before (5 s clock tolerance), and that `sub` is a user ID. Anonymous users are refused.
+- The keys are cached in memory for 10 minutes and refetched only when a token names a new key ID (key rotation), at most every 30 seconds (`src/auth/jwks.ts`).
+- A bad token gets 401. If Supabase's keys cannot be fetched, the API answers 503 instead, so an outage does not look like a logout. Tokens and `Authorization` headers are never logged.
+- The verified user is on `req.user` (`AuthenticatedRequest`). Business membership is added in task A14.
+
 ## Environment
 
 - `src/common/env.ts` validates the environment with Zod before Nest starts (§10.4). If anything is missing or invalid, the API lists every problem by variable name (never by value) and exits. `apps/api/.env.example` documents each variable.

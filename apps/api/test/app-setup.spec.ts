@@ -7,13 +7,15 @@ import type { Response } from 'supertest';
 import type { App } from 'supertest/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
+import { Public } from '../src/auth/public.decorator';
 import { configureApp } from '../src/app.setup';
 import { testEnv } from './test-env';
 
 const WEB_ORIGIN = testEnv.WEB_ORIGIN;
 const KB = 1024;
 
-/** Test-only route that accepts a JSON body, so the body limit can be exercised. */
+/** Test-only route that accepts a JSON body, so the body limit can be exercised. Public: no token needed. */
+@Public()
 @Controller('test-echo')
 class EchoController {
   @Post()
