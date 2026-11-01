@@ -63,7 +63,11 @@ The seed refuses to run when `NODE_ENV=production`, and against any non-local da
 - `src/auth/jwt-verifier.ts` checks the signature against Supabase's public keys (`{SUPABASE_URL}/auth/v1/.well-known/jwks.json`, ES256/RS256 only), `iss` = `SUPABASE_JWT_ISSUER`, `aud` = `authenticated`, expiry and not-before (5 s clock tolerance), and that `sub` is a user ID. Anonymous users are refused.
 - The keys are cached in memory for 10 minutes and refetched only when a token names a new key ID (key rotation), at most every 30 seconds (`src/auth/jwks.ts`).
 - A bad token gets 401. If Supabase's keys cannot be fetched, the API answers 503 instead, so an outage does not look like a logout. Tokens and `Authorization` headers are never logged.
-- The verified user is on `req.user` (`AuthenticatedRequest`). Business membership is added in task A14.
+- After the token, the guard loads the account (one query, `src/auth/account.service.ts`):
+  - `users.disabled_at` set → **403 `ACCOUNT_DISABLED`** on every route.
+  - A membership in a non-archived business → `req.auth = { userId, businessId, role }`. If there are several (STAFF, later), the oldest is used.
+  - No membership (or no `users` row yet) → **403 `ONBOARDING_REQUIRED`**, except on routes marked `@AllowWithoutMembership()`: only `GET /me` and `POST /onboarding` (§11.2).
+- In controllers, read the scope with `@CurrentAuth() auth: AuthContext` and the token user with `@CurrentUser() user: VerifiedUser`. **`auth.businessId` is the only source of tenant scope**: never take a business ID from the body, query or path (§11.1).
 
 ## Environment
 
