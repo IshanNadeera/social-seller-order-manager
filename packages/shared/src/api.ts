@@ -1,0 +1,29 @@
+// Request and response shapes shared by the API and the web app (docs/DEVELOPMENT.md §9).
+import type { MemberRole } from './enums.js';
+
+/** GET /api/v1/health (§9.1, §11.7). Reveals no configuration. */
+export type HealthResponse =
+  { status: 'ok'; database: 'ok' } | { status: 'error'; database: 'unreachable' };
+
+/** The signed-in user's business, as far as the app shell needs it. */
+export interface MeBusiness {
+  id: string;
+  name: string;
+  /** 2–6 uppercase letters or digits, e.g. "NIM" for order numbers like NIM-0042. */
+  orderPrefix: string;
+  currency: string;
+  timezone: string;
+}
+
+/** GET /api/v1/me (§9.1). */
+export interface MeResponse {
+  user: {
+    id: string;
+    email: string | null;
+  };
+  /** True until POST /onboarding has created the user's business. */
+  needsOnboarding: boolean;
+  /** The user's role in `business`; null while needsOnboarding. */
+  role: MemberRole | null;
+  business: MeBusiness | null;
+}

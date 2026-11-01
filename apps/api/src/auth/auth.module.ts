@@ -5,6 +5,8 @@ import type { Env } from '../common/env';
 import { ENV } from '../common/env.module';
 import { AccountService } from './account.service';
 import { AuthGuard } from './auth.guard';
+import { MeController } from './me.controller';
+import { MeService } from './me.service';
 import { createSupabaseJwks } from './jwks';
 import { SupabaseJwtVerifier } from './jwt-verifier';
 
@@ -16,6 +18,7 @@ export const JWKS = Symbol('JWKS');
  * loads the caller's business membership on every non-public route.
  */
 @Module({
+  controllers: [MeController],
   providers: [
     { provide: JWKS, inject: [ENV], useFactory: (env: Env) => createSupabaseJwks(env) },
     {
@@ -25,6 +28,7 @@ export const JWKS = Symbol('JWKS');
         new SupabaseJwtVerifier(keys, env.SUPABASE_JWT_ISSUER),
     },
     AccountService,
+    MeService,
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
   exports: [SupabaseJwtVerifier],

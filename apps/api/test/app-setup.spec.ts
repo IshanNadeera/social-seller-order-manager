@@ -9,6 +9,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
 import { Public } from '../src/auth/public.decorator';
 import { configureApp } from '../src/app.setup';
+import { PrismaService } from '../src/common/prisma.service';
+import { fakePrisma } from './fake-prisma';
 import { testEnv } from './test-env';
 
 const WEB_ORIGIN = testEnv.WEB_ORIGIN;
@@ -37,7 +39,10 @@ describe('HTTP setup', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule.forRoot(testEnv)],
       controllers: [EchoController],
-    }).compile();
+    })
+      .overrideProvider(PrismaService)
+      .useValue(fakePrisma())
+      .compile();
     app = moduleRef.createNestApplication<NestExpressApplication>({
       bodyParser: false,
       logger: false,
@@ -53,7 +58,7 @@ describe('HTTP setup', () => {
 
   describe('global prefix', () => {
     it('serves routes under /api/v1', async () => {
-      await request(server).get('/api/v1/health').expect(200, { status: 'ok' });
+      await request(server).get('/api/v1/health').expect(200, { status: 'ok', database: 'ok' });
     });
 
     it('does not serve routes outside /api/v1', async () => {

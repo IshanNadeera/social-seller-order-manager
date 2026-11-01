@@ -18,6 +18,8 @@ import type { AuthContext } from '../src/auth/auth-context';
 import { JWKS } from '../src/auth/auth.module';
 import type { VerifiedUser } from '../src/auth/jwt-verifier';
 import { AllowWithoutMembership } from '../src/auth/membership-optional.decorator';
+import { PrismaService } from '../src/common/prisma.service';
+import { fakePrisma } from './fake-prisma';
 import { testEnv } from './test-env';
 
 const KID = 'test-key-1';
@@ -63,6 +65,8 @@ async function startApp(keys: JWTVerifyGetKey): Promise<NestExpressApplication> 
     .useValue(keys)
     .overrideProvider(AccountService)
     .useValue(new FakeAccountService())
+    .overrideProvider(PrismaService)
+    .useValue(fakePrisma())
     .compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>({
     bodyParser: false,
@@ -119,7 +123,7 @@ describe('AuthGuard over HTTP', () => {
 
   describe('token (A13)', () => {
     it('lets anyone reach the public health check', async () => {
-      await get('health').expect(200, { status: 'ok' });
+      await get('health').expect(200, { status: 'ok', database: 'ok' });
     });
 
     it('rejects a protected route without a token', async () => {

@@ -67,6 +67,8 @@ The seed refuses to run when `NODE_ENV=production`, and against any non-local da
   - `users.disabled_at` set → **403 `ACCOUNT_DISABLED`** on every route.
   - A membership in a non-archived business → `req.auth = { userId, businessId, role }`. If there are several (STAFF, later), the oldest is used.
   - No membership (or no `users` row yet) → **403 `ONBOARDING_REQUIRED`**, except on routes marked `@AllowWithoutMembership()`: only `GET /me` and `POST /onboarding` (§11.2).
+- `GET /me` (`src/auth/me.controller.ts`) is membership-optional: it returns the user, `needsOnboarding`, the role and a business summary (`MeResponse` in `@ssom/shared`), and syncs an email changed in Supabase Auth into `app.users` (§8.2).
+- `GET /health` is public: it pings the database (2 s cap) and answers `200 {"status":"ok","database":"ok"}` or `503 {"status":"error","database":"unreachable"}`, never anything else (§11.7). The database pool gives up on a connection after 5 s instead of waiting forever.
 - In controllers, read the scope with `@CurrentAuth() auth: AuthContext` and the token user with `@CurrentUser() user: VerifiedUser`. **`auth.businessId` is the only source of tenant scope**: never take a business ID from the body, query or path (§11.1).
 
 ## Environment
