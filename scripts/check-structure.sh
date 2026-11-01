@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.." || exit 1
 
 missing=0
 required_dirs=(apps/web apps/api packages/shared supabase tests/e2e docs docs/adr)
-required_files=(README.md .gitignore docs/DEVELOPMENT.md)
+required_files=(README.md .gitignore docs/DEVELOPMENT.md package.json .nvmrc)
 
 for d in "${required_dirs[@]}"; do
   if [ ! -d "$d" ]; then echo "Missing folder: $d"; missing=1; fi

@@ -33,15 +33,19 @@ scripts/            Repository checks
 
 ## Common commands
 
-These work once the workspaces are set up (tasks A2–A9).
+Use the Node version in `.nvmrc` (Node 24 LTS). Installs refuse to run on other versions.
+The dev, Prisma and Supabase commands work once those parts are set up (tasks A4–A9).
 
 ```bash
+nvm use                             # switch to the Node version in .nvmrc
 npm install                         # install all workspaces
+npm ci                              # clean install from package-lock.json (CI)
 npm run dev -w apps/api             # start API
 npm run dev -w apps/web             # start web
 npx -w apps/api prisma migrate dev  # create/apply local migration
 npm test --workspaces               # run all unit tests
 npx supabase start                  # start local Postgres, Auth and mail catcher (Docker)
+npm test                            # repository checks + all workspace tests
 bash scripts/check-structure.sh     # check the repository layout
 ```
 

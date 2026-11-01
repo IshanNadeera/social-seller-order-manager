@@ -1,0 +1,6 @@
+{
+  "name": "@ssom/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Responsive web app (scaffolded in A5)."
+}

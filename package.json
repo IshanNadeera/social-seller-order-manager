@@ -1,0 +1,20 @@
+{
+  "name": "social-seller-order-manager",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Order management for small online sellers in Sri Lanka.",
+  "license": "UNLICENSED",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24.0.0 <25",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "check:structure": "bash scripts/check-structure.sh",
+    "check:workspaces": "node scripts/check-workspaces.mjs",
+    "test": "npm run check:structure && npm run check:workspaces && npm test --workspaces --if-present"
+  }
+}
