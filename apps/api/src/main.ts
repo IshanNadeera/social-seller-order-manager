@@ -4,14 +4,17 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { API_PREFIX, configureApp } from './app.setup';
-import { readBootstrapConfig } from './common/bootstrap-config';
+import { parseEnv } from './common/env';
 
 async function bootstrap(): Promise<void> {
-  const config = readBootstrapConfig();
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
-  configureApp(app, config);
-  await app.listen(config.port);
-  Logger.log(`API listening on port ${config.port} under /${API_PREFIX}`, 'Bootstrap');
+  // Fail fast: nothing starts until the environment is valid.
+  const env = parseEnv(process.env);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(env), {
+    bodyParser: false,
+  });
+  configureApp(app, env);
+  await app.listen(env.PORT);
+  Logger.log(`API listening on port ${env.PORT} under /${API_PREFIX}`, 'Bootstrap');
 }
 
 bootstrap().catch((error: unknown) => {

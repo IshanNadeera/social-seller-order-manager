@@ -8,8 +8,9 @@ import type { App } from 'supertest/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
+import { testEnv } from './test-env';
 
-const WEB_ORIGIN = 'http://localhost:5173';
+const WEB_ORIGIN = testEnv.WEB_ORIGIN;
 const KB = 1024;
 
 /** Test-only route that accepts a JSON body, so the body limit can be exercised. */
@@ -32,14 +33,14 @@ describe('HTTP setup', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [AppModule.forRoot(testEnv)],
       controllers: [EchoController],
     }).compile();
     app = moduleRef.createNestApplication<NestExpressApplication>({
       bodyParser: false,
       logger: false,
     });
-    configureApp(app, { webOrigin: WEB_ORIGIN });
+    configureApp(app, testEnv);
     await app.init();
     server = app.getHttpServer();
   });
