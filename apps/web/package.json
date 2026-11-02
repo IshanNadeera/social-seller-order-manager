@@ -5,12 +5,13 @@
   "description": "Responsive web app for Social Seller Order Manager.",
   "type": "module",
   "scripts": {
-    "predev": "npm run build -w @ssom/shared",
+    "predev": "npm run build --prefix ../../packages/shared",
     "dev": "vite",
-    "prebuild": "npm run build -w @ssom/shared",
+    "prebuild": "npm run build --prefix ../../packages/shared",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json",
+    "pretest": "npm run build --prefix ../../packages/shared",
     "test": "vitest run",
     "test:watch": "vitest"
   },
