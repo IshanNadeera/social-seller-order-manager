@@ -7,6 +7,9 @@ import { LoginPage } from '../features/auth/LoginPage';
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
 import { SignUpPage } from '../features/auth/SignUpPage';
 import { RedirectIfSignedIn, RequireAuth } from '../features/auth/guards';
+import { CustomerDetailPage } from '../features/customers/CustomerDetailPage';
+import { CustomerCreatePage, CustomerEditPage } from '../features/customers/CustomerFormPages';
+import { CustomersListPage } from '../features/customers/CustomersListPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { OnboardingPage } from '../features/onboarding/OnboardingPage';
 import { strings } from '../lib/strings';
@@ -55,11 +58,14 @@ export const routes: RouteObject[] = [
             element: <RootLayout />,
             children: [
               { index: true, element: <DashboardPage /> },
-              // Placeholders until their tasks land (orders C13–C15, customers B6, products B7,
-              // reports E3, settings E5), so every navigation link leads somewhere.
+              // Placeholders until their tasks land (orders C13–C15, products B7, reports E3,
+              // settings E5), so every navigation link leads somewhere.
               { path: 'orders', element: <PlaceholderPage title={strings.nav.orders} /> },
               { path: 'orders/new', element: <PlaceholderPage title={strings.nav.newOrder} /> },
-              { path: 'customers', element: <PlaceholderPage title={strings.nav.customers} /> },
+              { path: 'customers', element: <CustomersListPage /> },
+              { path: 'customers/new', element: <CustomerCreatePage /> },
+              { path: 'customers/:customerId', element: <CustomerDetailPage /> },
+              { path: 'customers/:customerId/edit', element: <CustomerEditPage /> },
               { path: 'products', element: <PlaceholderPage title={strings.nav.products} /> },
               { path: 'reports', element: <PlaceholderPage title={strings.nav.reports} /> },
               { path: 'settings', element: <PlaceholderPage title={strings.nav.settings} /> },

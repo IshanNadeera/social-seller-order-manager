@@ -74,7 +74,11 @@ export function createFakeApi(options: { me?: MeResponse } = {}) {
       body: typeof init.body === 'string' ? (JSON.parse(init.body) as unknown) : undefined,
     };
     calls.push(call);
-    const handler = handlers.get(`${call.method} ${call.path}`);
+    // An exact match (path with its query string) wins; otherwise a handler for the bare path
+    // answers, and can read the query from call.path.
+    const handler =
+      handlers.get(`${call.method} ${call.path}`) ??
+      handlers.get(`${call.method} ${call.path.split('?')[0] ?? call.path}`);
     const reply = handler ? await handler(call) : errorReply(404, 'NOT_FOUND', 'Not found.');
     return new Response(reply.body === undefined ? null : JSON.stringify(reply.body), {
       status: reply.status,

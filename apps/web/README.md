@@ -87,5 +87,28 @@ Sign-up, log in, log out and password reset use `supabase-js` against Supabase A
   - every icon has a visible text label and is hidden from screen readers;
   - a "Skip to main content" link comes first, and focus rings are visible;
   - tap targets are at least 44 px.
-- Sections not built yet show `PlaceholderPage` (orders C13–C15, customers B6, products B7, reports E3, settings E5), so no link leads to "Page not found".
+- Sections not built yet show `PlaceholderPage` (orders C13–C15, products B7, reports E3, settings E5), so no link leads to "Page not found".
 - **All UI text lives in `src/lib/strings.ts`.** `src/lib/ui-strings.test.ts` parses every component with the TypeScript parser. It fails on text written between JSX tags, or in `aria-label`, `alt`, `title`, `placeholder`, `label`, `hint`, `message` or `pendingLabel`. Icons are inline SVGs in `src/components/icons.tsx`, with no icon package.
+
+## Customers (B6)
+
+`src/features/customers/` (§6.6, §9.2):
+
+| Path                          | Screen                                                                       |
+| ----------------------------- | ---------------------------------------------------------------------------- |
+| `/customers`                  | Search by name or phone, cards on mobile, a table from `md` up, 25 per page. |
+| `/customers/new`              | Add a customer, optionally with a first delivery address.                    |
+| `/customers/:customerId`      | Details, order count, last order date, addresses; archive.                   |
+| `/customers/:customerId/edit` | Edit the customer.                                                           |
+
+- **The list's state is in the URL** (`?q=&page=&archived=1`), so Back and refresh keep it. The search runs once typing pauses for 300 ms (`SEARCH_DELAY_MS`), or at once on Enter. A new search or filter goes back to page 1.
+- **Data:** `api.ts` holds the TanStack Query hooks. Cache keys include the business ID, so one business's customers can never show for another on the same device. Every customer and address change answers with the whole customer (`CustomerDetail`). `useCustomerSaved()` puts that into the cache and refetches the lists.
+- **Forms** use the shared schemas from `@ssom/shared` (`customerCreateSchema`, `addressCreateSchema`), so the browser and the API apply the same rules and messages.
+  - Edits send only the fields that changed, and nothing at all when none did.
+  - A field error from the API is shown next to its field (`lib/form-errors.ts`); other errors go in an alert with the reference number. What was typed is never lost.
+  - The "Add a delivery address" section starts with the customer's name and phone. Closing it again sends no address (`shouldUnregister`).
+- **Addresses:** the default comes first. Each card offers Make default, Edit and Remove. The API keeps exactly one default, and the screen just shows what it returns.
+- **Archiving** a customer or an address asks first (`components/ConfirmDialog.tsx`). Focus starts on Cancel, Tab stays inside the dialog, Escape cancels, and focus returns to the button afterwards. A failed attempt shows its reason in the dialog. An archived customer is shown read-only.
+- Dates show on the business's calendar (`lib/format.ts`, from `/me`'s timezone).
+- Not here yet: the order history list (C16) and the district picker (B8). District is free text for now.
+- Tests: `customers.test.tsx` runs the real routes and API client over the fake fetch, so it checks the exact requests. In `src/test/fake-api.ts`, a handler registered for a path without a query string also answers requests with one; read `call.path` for the query.
