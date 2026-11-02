@@ -109,3 +109,36 @@ describe('ZodQueryPipe', () => {
     );
   });
 });
+
+describe('whole-request rules', () => {
+  const atLeastOne = z
+    .strictObject({ name: z.string().optional(), phone: z.string().optional() })
+    .refine((input) => Object.values(input).some((value) => value !== undefined), {
+      message: 'Change at least one field.',
+    });
+
+  it('shows a rule about the request as a whole as the message', () => {
+    try {
+      new ZodBodyPipe(atLeastOne).transform({}, body);
+      expect.unreachable();
+    } catch (error) {
+      expect(error).toBeInstanceOf(BadRequestException);
+      expect((error as BadRequestException).getResponse()).toEqual({
+        code: 'VALIDATION_ERROR',
+        message: 'Change at least one field.',
+        fieldErrors: {},
+      });
+    }
+  });
+
+  it('still explains a body that is not an object', () => {
+    try {
+      new ZodBodyPipe(atLeastOne).transform('text', body);
+      expect.unreachable();
+    } catch (error) {
+      expect((error as BadRequestException).getResponse()).toMatchObject({
+        message: 'The request body must be a JSON object with the expected fields.',
+      });
+    }
+  });
+});

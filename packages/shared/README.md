@@ -1,6 +1,6 @@
 # packages/shared
 
-Code shared by the web app and the API: enums, constants, and later request/response types, display-stage labels and Zod schemas. Not Prisma models. See `docs/DEVELOPMENT.md` §7 and §10.3.
+Code shared by the web app and the API: enums, constants, request/response types and Zod request schemas (display-stage labels come later). Not Prisma models. See `docs/DEVELOPMENT.md` §7 and §10.3.
 
 ## What's here
 
@@ -31,3 +31,11 @@ Vite picks up rebuilt files straight away; restart the API's dev server to load 
 - `phoneSearchDigits(query)` gives the last 9 digits of a search, or `null` if there are fewer. Search matches stored numbers however they were written.
 - It accepts `0771234567`, `771234567`, `+94 77 123 4567`, `0094771234567` and `94771234567`, with spaces, dashes, dots or brackets, plus foreign numbers written with `+` and their country code.
 - It uses the library's small `min` metadata, which checks number length and leading-digit patterns, so the web bundle stays small.
+
+## Request schemas (`src/schemas/`, ADR-024)
+
+- Strict Zod schemas for request bodies and query strings, used by the API pipes (`ZodBodyPipe`, `ZodQueryPipe`) and by the web forms, so both apply the same rules and plain-language messages.
+- `schemas/onboarding.ts`: `onboardingRequestSchema`.
+- `schemas/customers.ts`: `customerCreateSchema` (with an optional first `address`), `customerUpdateSchema`, `customerListQuerySchema` and `addressInputSchema`, plus their limits (`CUSTOMER_NAME_MAX_LENGTH`, `MAX_PAGE_SIZE`, …).
+  - Blank optional text becomes `null`, so clearing a form field clears the value. Emails are lower-cased.
+- Response types are in `src/api.ts` (`Page`, `CustomerSummary`, `CustomerDetail`, `CustomerAddressView`, …).

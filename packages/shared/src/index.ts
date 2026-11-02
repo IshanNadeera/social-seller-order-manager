@@ -6,3 +6,4 @@ export * from './api.js';
 export * from './order-prefix.js';
 export * from './phone.js';
 export * from './schemas/onboarding.js';
+export * from './schemas/customers.js';

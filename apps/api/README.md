@@ -106,6 +106,24 @@ Every tenant-owned query is scoped to the business of the verified membership. R
 - **Rate limit:** 300 requests per minute per signed-in user (`UserThrottlerGuard`, after `AuthGuard`). Public routes are limited per IP address. Over the limit: **429 `RATE_LIMITED`** with `Retry-After`. Limits are in memory, per API instance. When the API runs behind a proxy, set Express `trust proxy` at deploy time (F7) so IP limits see the real client.
 - Tests: `test/errors.spec.ts` and `test/throttle.spec.ts`. `test/http-app.ts` starts the real app with test keys and captures log lines.
 
+## Customers API (§9.2, task B2)
+
+`src/customers/`. All routes need a signed-in member, are scoped to their business, and answer `Cache-Control: no-store` (the responses hold personal data).
+
+| Route                                                | What it does                                                                                                                                                                                    |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /customers?q=&page=&pageSize=&includeArchived=` | Search, 25 per page by default, at most 100. Sorted by name, then ID, so pages never overlap. Returns `Page<CustomerSummary>` (`items`, `page`, `pageSize`, `total`).                           |
+| `POST /customers`                                    | Create, optionally with a first `address` that becomes the default. One transaction: an invalid address creates nothing. 201 + `CustomerDetail`.                                                |
+| `GET /customers/:id`                                 | `CustomerDetail`: the customer, active addresses (default first), `orderCount` and `lastOrderAt`.                                                                                               |
+| `PATCH /customers/:id`                               | Change only the fields sent; `null` or `""` clears phone, email or notes. An empty body is 400 "Change at least one field." An archived customer is **422 `CUSTOMER_ARCHIVED`**.                |
+| `POST /customers/:id/archive`                        | Archive (customers are never deleted, §8.1). Repeating it is harmless and keeps the first date. Archived customers stay readable and leave the default list; `includeArchived=true` shows them. |
+
+- **Search (`src/customers/customer-search.ts`):** `q` matches any part of the name (case-insensitive, served by the trigram index), any part of the phone as typed, or, when `q` has 9 or more digits, the last 9 digits of the normalised phone. So `0771234567`, `+94 77 123 4567`, `771234567` and `0094771234567` all find the same customer.
+- **Prisma does not escape `%` and `_`** in `contains` / `startsWith` / `endsWith`. Pass user text through `escapeLike()` first, as the customer search does, or a search for `_` matches everything.
+- **Phones** go through `normalizePhone()` from `@ssom/shared` on create and update. A number that cannot be read is saved anyway, with `phoneE164: null` and `phoneWarning: 'PHONE_UNREADABLE'` in responses (§7.11).
+- Request schemas live in `@ssom/shared` (`customerCreateSchema`, `customerUpdateSchema`, `customerListQuerySchema`), so the web forms (B6) use the same rules and messages.
+- Tests: `test/customer-search.spec.ts` (the filter, no database) and `test/customers.db-spec.ts` (every route against the database, with basic cross-tenant 404s; the full sweep is B5).
+
 ## Environment
 
 - `src/common/env.ts` validates the environment with Zod before Nest starts (§10.4). If anything is missing or invalid, the API lists every problem by variable name (never by value) and exits. `apps/api/.env.example` documents each variable.

@@ -56,12 +56,17 @@ function parseOrThrow<Schema extends z.ZodType>(
   const result = schema.safeParse(value);
   if (result.success) return result.data;
   const fieldErrors = toFieldErrors(result.error.issues);
+  // A rule about the request as a whole (a refine with no path, e.g. "Change at least one field.")
+  // is written for people, so it is shown as the message when no single field is at fault.
+  const wholeRequestRule = result.error.issues.find(
+    (issue) => issue.path.length === 0 && issue.code === 'custom',
+  )?.message;
   const body: ValidationErrorBody = {
     code: 'VALIDATION_ERROR',
     message:
       Object.keys(fieldErrors).length > 0
         ? 'Please check the highlighted fields.'
-        : NOT_AN_OBJECT[source],
+        : (wholeRequestRule ?? NOT_AN_OBJECT[source]),
     fieldErrors,
   };
   throw new BadRequestException(body);

@@ -39,3 +39,50 @@ export interface ApiErrorBody {
   fieldErrors: Record<string, string>;
   requestId: string;
 }
+
+/** A page of a list (§9.5): items plus where they sit in the full result. */
+export interface Page<Item> {
+  items: Item[];
+  page: number;
+  pageSize: number;
+  /** Matching rows in total, across all pages. */
+  total: number;
+}
+
+/** A customer in lists and search results (§6.6). Dates are ISO 8601 strings in UTC. */
+export interface CustomerSummary {
+  id: string;
+  name: string;
+  /** The phone as the seller typed it. */
+  phone: string | null;
+  /** E.164 (+94771234567), or null when there is no phone or it could not be read. */
+  phoneE164: string | null;
+  /** 'PHONE_UNREADABLE' when a phone was saved but could not be read (§7.11): show a warning. */
+  phoneWarning: 'PHONE_UNREADABLE' | null;
+  email: string | null;
+  archivedAt: string | null;
+  orderCount: number;
+  lastOrderAt: string | null;
+}
+
+/** A saved delivery address (§7.11). */
+export interface CustomerAddressView {
+  id: string;
+  label: string | null;
+  recipientName: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string | null;
+  district: string | null;
+  postalCode: string | null;
+  isDefault: boolean;
+}
+
+/** GET /customers/:id. Active addresses only, the default first. */
+export interface CustomerDetail extends CustomerSummary {
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  addresses: CustomerAddressView[];
+}
