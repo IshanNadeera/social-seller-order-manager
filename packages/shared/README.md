@@ -36,6 +36,7 @@ Vite picks up rebuilt files straight away; restart the API's dev server to load 
 
 - Strict Zod schemas for request bodies and query strings, used by the API pipes (`ZodBodyPipe`, `ZodQueryPipe`) and by the web forms, so both apply the same rules and plain-language messages.
 - `schemas/onboarding.ts`: `onboardingRequestSchema`.
-- `schemas/customers.ts`: `customerCreateSchema` (with an optional first `address`), `customerUpdateSchema`, `customerListQuerySchema` and `addressInputSchema`, plus their limits (`CUSTOMER_NAME_MAX_LENGTH`, `MAX_PAGE_SIZE`, …).
+- `schemas/customers.ts`: `customerCreateSchema` (with an optional first `address`), `customerUpdateSchema`, `customerListQuerySchema`, `addressCreateSchema` and `addressUpdateSchema`, plus their limits (`CUSTOMER_NAME_MAX_LENGTH`, `MAX_PAGE_SIZE`, `MAX_ACTIVE_ADDRESSES`, …).
   - Blank optional text becomes `null`, so clearing a form field clears the value. Emails are lower-cased.
+  - Update schemas refuse an empty body ("Change at least one field."), but only when every field is valid, so an invalid field is reported alone.
 - Response types are in `src/api.ts` (`Page`, `CustomerSummary`, `CustomerDetail`, `CustomerAddressView`, …).

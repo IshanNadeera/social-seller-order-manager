@@ -121,8 +121,33 @@ Every tenant-owned query is scoped to the business of the verified membership. R
 - **Search (`src/customers/customer-search.ts`):** `q` matches any part of the name (case-insensitive, served by the trigram index), any part of the phone as typed, or, when `q` has 9 or more digits, the last 9 digits of the normalised phone. So `0771234567`, `+94 77 123 4567`, `771234567` and `0094771234567` all find the same customer.
 - **Prisma does not escape `%` and `_`** in `contains` / `startsWith` / `endsWith`. Pass user text through `escapeLike()` first, as the customer search does, or a search for `_` matches everything.
 - **Phones** go through `normalizePhone()` from `@ssom/shared` on create and update. A number that cannot be read is saved anyway, with `phoneE164: null` and `phoneWarning: 'PHONE_UNREADABLE'` in responses (§7.11).
-- Request schemas live in `@ssom/shared` (`customerCreateSchema`, `customerUpdateSchema`, `customerListQuerySchema`), so the web forms (B6) use the same rules and messages.
+- Request schemas live in `@ssom/shared` (`customerCreateSchema`, `customerUpdateSchema`, `customerListQuerySchema`, `addressCreateSchema`, `addressUpdateSchema`), so the web forms (B6) use the same rules and messages.
 - Tests: `test/customer-search.spec.ts` (the filter, no database) and `test/customers.db-spec.ts` (every route against the database, with basic cross-tenant 404s; the full sweep is B5).
+
+### Customer addresses (§7.11, §9.2, task B3)
+
+`src/customers/addresses.*`. Each route answers with the whole `CustomerDetail`, because a change can move the default to another address.
+
+| Route                                              | What it does                                                                                                  |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `POST /customers/:id/addresses`                    | Add an address (201). `isDefault: true` makes it the default.                                                 |
+| `PATCH /customers/:id/addresses/:addressId`        | Change only the fields sent; `null` or `""` clears an optional field. `isDefault: true` makes it the default. |
+| `POST /customers/:id/addresses/:addressId/archive` | Archive (never deleted). Repeating it is harmless.                                                            |
+
+- **One default, always.** A customer with active addresses has exactly one default:
+  - the first address becomes the default even if not asked;
+  - making another the default moves it in the same transaction;
+  - archiving the default passes it to the oldest remaining address;
+  - `isDefault: false` is refused ("make another address the default"). The partial unique index `address_one_default` is the final guard.
+- **Locking.** Every address change runs in one transaction that first locks the customer row (`lockActiveCustomer()` in `customer-lock.ts`, `SELECT … FOR UPDATE`), so two changes to one customer never interleave.
+- **Required:** `recipientName`, `phone` and `addressLine1` (all NOT NULL in §8.2). Label, line 2, city, district and postal code are optional.
+- **Errors:**
+  - Any change for an archived customer: **422 `CUSTOMER_ARCHIVED`**.
+  - Editing an archived address: **422 `ADDRESS_ARCHIVED`**.
+  - More than `MAX_ACTIVE_ADDRESSES` (20) active addresses: **422 `ADDRESS_LIMIT_REACHED`**. The customer page lists every active address, so the list stays bounded.
+  - An address of another customer or business: the standard 404.
+- Orders keep their own copy of the address (§7.11), so these changes never alter existing orders.
+- Tests: `test/addresses.db-spec.ts`, including two concurrent "make default" requests.
 
 ## Environment
 

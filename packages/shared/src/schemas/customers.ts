@@ -10,6 +10,8 @@ export const ADDRESS_SHORT_FIELD_MAX_LENGTH = 50;
 export const CUSTOMER_SEARCH_MAX_LENGTH = 100;
 /** §6.3 / §9.5: default 25 per page, never more than 100. */
 export const DEFAULT_PAGE_SIZE = 25;
+/** Active addresses per customer. The customer page lists them all, so the list stays bounded. */
+export const MAX_ACTIVE_ADDRESSES = 20;
 export const MAX_PAGE_SIZE = 100;
 
 /** "" or only spaces → null, so a cleared form field clears the value. */
@@ -43,6 +45,18 @@ const notes = optionalText(
   CUSTOMER_NOTES_MAX_LENGTH,
   `Use at most ${CUSTOMER_NOTES_MAX_LENGTH} characters.`,
 );
+
+/**
+ * For "send only what changes" bodies: an empty one is refused as a whole. Checked only when every
+ * field is valid: zod leaves a failing field out of the value, so `{ name: "" }` would otherwise look
+ * empty too and get a second, misleading error.
+ */
+const changesSomething = (input: Record<string, unknown>) =>
+  Object.values(input).some((value) => value !== undefined);
+const changeAtLeastOneField = {
+  message: 'Change at least one field.',
+  when: (payload: { issues: readonly unknown[] }) => payload.issues.length === 0,
+};
 
 /** A delivery address (§7.11): only the first line is required besides recipient and phone. */
 export const addressInputSchema = z.strictObject({
@@ -92,9 +106,29 @@ export const customerCreateSchema = z.strictObject({
 /** PATCH /customers/:id. Send only what changes; null (or "") clears phone, email or notes. */
 export const customerUpdateSchema = z
   .strictObject({ name: name.optional(), phone, email, notes })
-  .refine((input) => Object.values(input).some((value) => value !== undefined), {
-    message: 'Change at least one field.',
-  });
+  .refine(changesSomething, changeAtLeastOneField);
+
+/**
+ * POST /customers/:id/addresses. `isDefault: true` makes it the default; the customer's first
+ * address becomes the default anyway.
+ */
+export const addressCreateSchema = addressInputSchema.extend({
+  isDefault: z.boolean({ error: 'Use true or false.' }).optional(),
+});
+
+/**
+ * PATCH /customers/:id/addresses/:addressId. Send only what changes; null (or "") clears an optional
+ * field. `isDefault: true` makes this the default. An address cannot be "un-defaulted" on its own:
+ * a customer with addresses always has exactly one default, so another one is made the default.
+ */
+export const addressUpdateSchema = addressInputSchema
+  .partial()
+  .extend({
+    isDefault: z
+      .literal(true, { error: 'To change the default, make another address the default.' })
+      .optional(),
+  })
+  .refine(changesSomething, changeAtLeastOneField);
 
 const pageNumber = z.coerce
   .number({ error: 'Must be a whole number.' })
@@ -124,4 +158,8 @@ export type CustomerCreateRequest = z.input<typeof customerCreateSchema>;
 export type CustomerCreateInput = z.output<typeof customerCreateSchema>;
 export type CustomerUpdateRequest = z.input<typeof customerUpdateSchema>;
 export type CustomerUpdateInput = z.output<typeof customerUpdateSchema>;
+export type AddressCreateRequest = z.input<typeof addressCreateSchema>;
+export type AddressCreateInput = z.output<typeof addressCreateSchema>;
+export type AddressUpdateRequest = z.input<typeof addressUpdateSchema>;
+export type AddressUpdateInput = z.output<typeof addressUpdateSchema>;
 export type CustomerListQuery = z.output<typeof customerListQuerySchema>;

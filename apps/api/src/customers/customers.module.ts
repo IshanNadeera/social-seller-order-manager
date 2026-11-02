@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
+import { AddressesController } from './addresses.controller';
+import { AddressesService } from './addresses.service';
 import { CustomersController } from './customers.controller';
 import { CustomersService } from './customers.service';
 
-/** Customers (§9.2). Addresses join in B3. */
+/** Customers and their saved addresses (§9.2). */
 @Module({
-  controllers: [CustomersController],
-  providers: [CustomersService],
+  controllers: [CustomersController, AddressesController],
+  providers: [CustomersService, AddressesService],
   exports: [CustomersService],
 })
 export class CustomersModule {}

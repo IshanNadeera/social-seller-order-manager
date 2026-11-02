@@ -1,4 +1,4 @@
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PHONE_UNREADABLE, normalizePhone } from '@ssom/shared';
 import type {
   CustomerAddressView,
@@ -13,6 +13,7 @@ import { PrismaService } from '../common/prisma.service';
 import { orNotFound, tenantData, tenantWhere } from '../common/tenant';
 import type { TenantScope } from '../common/tenant';
 import type { Prisma } from '../generated/prisma/client';
+import { customerArchivedError } from './customer-lock';
 import { CUSTOMER_LIST_ORDER, customerSearchWhere } from './customer-search';
 
 const summarySelect = {
@@ -149,7 +150,7 @@ export class CustomersService {
         select: { archivedAt: true },
       }),
     );
-    if (current.archivedAt !== null) throw archivedError();
+    if (current.archivedAt !== null) throw customerArchivedError();
 
     const data: Prisma.CustomerUpdateManyMutationInput = {};
     if (input.name !== undefined) data.name = input.name;
@@ -165,7 +166,7 @@ export class CustomersService {
       where: tenantWhere(auth, { id, archivedAt: null }),
       data,
     });
-    if (result.count === 0) throw archivedError(); // archived between the check and the update
+    if (result.count === 0) throw customerArchivedError(); // archived between the check and the update
     return this.get(auth, id);
   }
 
@@ -222,11 +223,4 @@ function toSummary(row: SummaryRow, stats: OrderStats): CustomerSummary {
     orderCount: stats.orderCount,
     lastOrderAt: stats.lastOrderAt?.toISOString() ?? null,
   };
-}
-
-function archivedError(): UnprocessableEntityException {
-  return new UnprocessableEntityException({
-    code: 'CUSTOMER_ARCHIVED',
-    message: 'This customer is archived, so their details can no longer be changed.',
-  });
 }
