@@ -21,3 +21,13 @@ npm test -w @ssom/shared      # unit tests (Vitest)
 ```
 
 Vite picks up rebuilt files straight away; restart the API's dev server to load them. Relative imports inside `src/` end in `.js` (for example `./enums.js`), as native ES modules require.
+
+## Phone numbers (`src/phone.ts`, §7.11, ADR-016)
+
+- `normalizePhone(typed)` returns `{ display, normalized, warning }`, or `null` for an empty value.
+  - `display` is what the seller typed, trimmed.
+  - `normalized` is E.164 (`+94771234567`), parsed with `libphonenumber-js` and default country LK.
+  - A number that can't be read gets `normalized: null` and `warning: 'PHONE_UNREADABLE'`. It is still saved; the seller is never blocked.
+- `phoneSearchDigits(query)` gives the last 9 digits of a search, or `null` if there are fewer. Search matches stored numbers however they were written.
+- It accepts `0771234567`, `771234567`, `+94 77 123 4567`, `0094771234567` and `94771234567`, with spaces, dashes, dots or brackets, plus foreign numbers written with `+` and their country code.
+- It uses the library's small `min` metadata, which checks number length and leading-digit patterns, so the web bundle stays small.
