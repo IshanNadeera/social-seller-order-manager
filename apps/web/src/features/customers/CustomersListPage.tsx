@@ -1,48 +1,23 @@
 import type { CustomerSummary } from '@ssom/shared';
-import { useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link } from 'react-router';
 import { ApiErrorMessage } from '../../components/ApiErrorMessage';
-import { CheckboxField, FormAlert, TextField, buttonClass, linkClass } from '../../components/form';
+import { CheckboxField, FormAlert, buttonClass, linkClass } from '../../components/form';
 import { Pagination } from '../../components/Pagination';
+import { SearchBox } from '../../components/SearchBox';
 import { formatDate } from '../../lib/format';
 import { strings } from '../../lib/strings';
-import { useDebouncedValue } from '../../lib/use-debounced-value';
-import { useBusinessTimeZone, useCustomerList } from './api';
+import { useListParams } from '../../lib/use-list-params';
+import { useBusinessTimeZone } from '../account/use-business';
+import { useCustomerList } from './api';
 import type { CustomerListParams } from './api';
 import { customerPaths } from './paths';
 
 const s = strings.customers.list;
 
-/** How long typing must pause before the list is searched (slow networks: fewer requests). */
-export const SEARCH_DELAY_MS = 300;
-
-/** The list's state lives in the URL (?q=&page=&archived=1), so Back and refresh keep it. */
-function readParams(searchParams: URLSearchParams): CustomerListParams {
-  const page = Number(searchParams.get('page'));
-  return {
-    q: searchParams.get('q')?.trim() ?? '',
-    page: Number.isInteger(page) && page > 1 ? page : 1,
-    includeArchived: searchParams.get('archived') === '1',
-  };
-}
-
 /** /customers (§6.6): search by name or phone, cards on mobile, a table on wider screens. */
 export function CustomersListPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const params = readParams(searchParams);
+  const [params, update] = useListParams();
   const list = useCustomerList(params);
-
-  /** Changes some of q / page / archived; a new search or filter starts again at page 1. */
-  const update = (changes: Partial<CustomerListParams>, options: { replace: boolean }) => {
-    setSearchParams((current) => {
-      const next = { ...readParams(current), page: 1, ...changes };
-      const query = new URLSearchParams();
-      if (next.q !== '') query.set('q', next.q);
-      if (next.page > 1) query.set('page', String(next.page));
-      if (next.includeArchived) query.set('archived', '1');
-      return query;
-    }, options);
-  };
 
   return (
     <section className="space-y-5">
@@ -53,7 +28,12 @@ export function CustomersListPage() {
         </Link>
       </div>
 
-      <SearchBox value={params.q} onSearch={(q) => update({ q }, { replace: true })} />
+      <SearchBox
+        label={s.search}
+        hint={s.searchHint}
+        value={params.q}
+        onSearch={(q) => update({ q }, { replace: true })}
+      />
       <CheckboxField
         label={s.showArchived}
         checked={params.includeArchived}
@@ -97,57 +77,6 @@ export function CustomersListPage() {
         )}
       </div>
     </section>
-  );
-}
-
-/**
- * Searches as the seller types, once typing pauses; Enter searches at once. Follows the URL when it
- * changes from outside (Back, "Clear search").
- */
-function SearchBox({ value, onSearch }: { value: string; onSearch: (q: string) => void }) {
-  const [text, setText] = useState(value);
-  const debounced = useDebouncedValue(text.trim(), SEARCH_DELAY_MS);
-  // The last search this box asked for, so the URL and the box don't fight.
-  const lastSearched = useRef(value);
-  // Act only when the settled text really changes, not on every render: after Back, the old
-  // settled text must not be pushed into the URL again.
-  const previousDebounced = useRef(debounced);
-
-  useEffect(() => {
-    if (value === lastSearched.current) return;
-    lastSearched.current = value;
-    setText(value);
-  }, [value]);
-
-  useEffect(() => {
-    if (debounced === previousDebounced.current) return;
-    previousDebounced.current = debounced;
-    if (debounced === lastSearched.current) return;
-    lastSearched.current = debounced;
-    onSearch(debounced);
-  }, [debounced, onSearch]);
-
-  return (
-    <form
-      role="search"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const q = text.trim();
-        if (q === lastSearched.current) return;
-        lastSearched.current = q;
-        onSearch(q);
-      }}
-    >
-      <TextField
-        label={s.search}
-        hint={s.searchHint}
-        type="search"
-        autoComplete="off"
-        enterKeyHint="search"
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-      />
-    </form>
   );
 }
 

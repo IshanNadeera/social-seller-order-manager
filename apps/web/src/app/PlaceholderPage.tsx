@@ -1,7 +1,7 @@
 import { strings } from '../lib/strings';
 
 /**
- * Stands in for a section that a later task builds (orders C13–C15, products B7,
+ * Stands in for a section that a later task builds (orders C13–C15,
  * reports E3, settings E5), so every navigation link already leads somewhere sensible.
  */
 export function PlaceholderPage({ title }: { title: string }) {

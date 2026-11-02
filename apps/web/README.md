@@ -101,7 +101,7 @@ Sign-up, log in, log out and password reset use `supabase-js` against Supabase A
 | `/customers/:customerId`      | Details, order count, last order date, addresses; archive.                   |
 | `/customers/:customerId/edit` | Edit the customer.                                                           |
 
-- **The list's state is in the URL** (`?q=&page=&archived=1`), so Back and refresh keep it. The search runs once typing pauses for 300 ms (`SEARCH_DELAY_MS`), or at once on Enter. A new search or filter goes back to page 1.
+- **The list's state is in the URL** (`?q=&page=&archived=1`), so Back and refresh keep it. The search runs once typing pauses for 300 ms (`SEARCH_DELAY_MS` in `components/SearchBox.tsx`), or at once on Enter. A new search or filter goes back to page 1.
 - **Data:** `api.ts` holds the TanStack Query hooks. Cache keys include the business ID, so one business's customers can never show for another on the same device. Every customer and address change answers with the whole customer (`CustomerDetail`). `useCustomerSaved()` puts that into the cache and refetches the lists.
 - **Forms** use the shared schemas from `@ssom/shared` (`customerCreateSchema`, `addressCreateSchema`), so the browser and the API apply the same rules and messages.
   - Edits send only the fields that changed, and nothing at all when none did.
@@ -112,3 +112,25 @@ Sign-up, log in, log out and password reset use `supabase-js` against Supabase A
 - Dates show on the business's calendar (`lib/format.ts`, from `/me`'s timezone).
 - Not here yet: the order history list (C16) and the district picker (B8). District is free text for now.
 - Tests: `customers.test.tsx` runs the real routes and API client over the fake fetch, so it checks the exact requests. In `src/test/fake-api.ts`, a handler registered for a path without a query string also answers requests with one; read `call.path` for the query.
+
+## Products (B7)
+
+`src/features/products/` (§6.7, §9.3):
+
+| Path                   | Screen                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------- |
+| `/products`            | Search by name or SKU, cards on mobile, a table from `md` up, 25 per page, "Show archived". |
+| `/products/new`        | Add a product: name, selling price, SKU (optional), description (optional).                 |
+| `/products/:productId` | Edit, or archive with confirmation. An archived product is shown read-only.                 |
+
+- **No inventory fields** (§6.7). A product has nothing else to show, so it has no separate detail page.
+- **Money is a string end to end (§7.5).**
+  - The price is a text input (decimal keypad), checked by the shared `moneySchema` and sent as `"1500.00"`.
+  - It is shown with `formatMoney(amount, currency)` (`lib/money.ts`), which groups the digits on the text and never makes a JavaScript number.
+  - The currency comes from the business (`useBusinessCurrency()`).
+- A SKU clash (409 `SKU_TAKEN`) is shown next to the SKU field. Saving goes back to the list. Edits send only the changed fields.
+- **Shared with customers:**
+  - `components/SearchBox.tsx` (search as you type);
+  - `lib/use-list-params.ts` (`?q=&page=&archived=1` in the URL, and `listApiPath()` for the API request);
+  - `features/account/use-business.ts` (business ID for cache keys, timezone, currency).
+- Tests: `products.test.tsx` and `lib/money.test.ts`.

@@ -12,6 +12,8 @@ import { CustomerCreatePage, CustomerEditPage } from '../features/customers/Cust
 import { CustomersListPage } from '../features/customers/CustomersListPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { OnboardingPage } from '../features/onboarding/OnboardingPage';
+import { ProductCreatePage, ProductEditPage } from '../features/products/ProductFormPages';
+import { ProductsListPage } from '../features/products/ProductsListPage';
 import { strings } from '../lib/strings';
 import { MorePage } from './MorePage';
 import { NotFoundPage } from './NotFoundPage';
@@ -58,7 +60,7 @@ export const routes: RouteObject[] = [
             element: <RootLayout />,
             children: [
               { index: true, element: <DashboardPage /> },
-              // Placeholders until their tasks land (orders C13–C15, products B7, reports E3,
+              // Placeholders until their tasks land (orders C13–C15, reports E3,
               // settings E5), so every navigation link leads somewhere.
               { path: 'orders', element: <PlaceholderPage title={strings.nav.orders} /> },
               { path: 'orders/new', element: <PlaceholderPage title={strings.nav.newOrder} /> },
@@ -66,7 +68,9 @@ export const routes: RouteObject[] = [
               { path: 'customers/new', element: <CustomerCreatePage /> },
               { path: 'customers/:customerId', element: <CustomerDetailPage /> },
               { path: 'customers/:customerId/edit', element: <CustomerEditPage /> },
-              { path: 'products', element: <PlaceholderPage title={strings.nav.products} /> },
+              { path: 'products', element: <ProductsListPage /> },
+              { path: 'products/new', element: <ProductCreatePage /> },
+              { path: 'products/:productId', element: <ProductEditPage /> },
               { path: 'reports', element: <PlaceholderPage title={strings.nav.reports} /> },
               { path: 'settings', element: <PlaceholderPage title={strings.nav.settings} /> },
               { path: 'more', element: <MorePage /> },

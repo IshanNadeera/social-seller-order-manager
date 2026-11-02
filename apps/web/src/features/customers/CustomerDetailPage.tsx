@@ -12,7 +12,8 @@ import { useApi } from '../../lib/api-context';
 import { formatDate } from '../../lib/format';
 import { strings } from '../../lib/strings';
 import { AddressForm } from './AddressForm';
-import { useBusinessTimeZone, useCustomer, useCustomerSaved } from './api';
+import { useBusinessTimeZone } from '../account/use-business';
+import { useCustomer, useCustomerSaved } from './api';
 import { customerPaths } from './paths';
 
 const s = strings.customers;

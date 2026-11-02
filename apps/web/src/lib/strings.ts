@@ -29,6 +29,8 @@ export const strings = {
     /** Shown where a value is missing. */
     none: '—',
   },
+  /** A money amount with its currency, e.g. "LKR 1,500.00" (the amount arrives already grouped). */
+  money: (currency: string, amount: string) => `${currency} ${amount}`,
   pagination: {
     label: 'Pages',
     summary: (from: number, to: number, total: number) => `Showing ${from}–${to} of ${total}`,
@@ -278,6 +280,59 @@ export const strings = {
         confirm: 'Remove address',
         pending: 'Removing…',
       },
+    },
+  },
+  products: {
+    fields: {
+      name: 'Name',
+      sku: 'SKU (optional)',
+      skuHint: 'Your own product code. Two active products can’t share one.',
+      sellingPrice: 'Selling price',
+      sellingPriceHint: (currency: string) => `In ${currency}, like 1500 or 1500.50.`,
+      description: 'Description (optional)',
+    },
+    list: {
+      title: 'Products',
+      add: 'Add product',
+      search: 'Search products',
+      searchHint: 'Name or SKU.',
+      showArchived: 'Show archived products',
+      listLabel: 'Products',
+      loadFailed: 'We couldn’t load your products.',
+      emptyTitle: 'No products yet',
+      emptyBody:
+        'Add the things you sell, so orders can fill in the name and price for you. You can still add one-off items to any order.',
+      noMatches: (q: string) => `No products match “${q}”.`,
+      clearSearch: 'Clear search',
+      columns: {
+        name: 'Name',
+        sku: 'SKU',
+        price: 'Price',
+      },
+      sku: (sku: string) => `SKU ${sku}`,
+      archived: 'Archived',
+    },
+    create: {
+      title: 'Add product',
+      submit: 'Save product',
+    },
+    edit: {
+      title: 'Edit product',
+      back: 'All products',
+      submit: 'Save changes',
+      archive: 'Archive product',
+      archivedBadge: 'Archived',
+      archivedBanner:
+        'This product is archived. It can no longer be changed or added to new orders. Past orders keep their own copy.',
+      loadFailed: 'We couldn’t load this product.',
+      notFoundTitle: 'Product not found',
+      notFoundBody: 'It may have been removed, or the link may be wrong.',
+    },
+    archiveDialog: {
+      title: (name: string) => `Archive ${name}?`,
+      body: 'It will be hidden from your product list and can’t be added to new orders. Past orders keep their own copy of it.',
+      confirm: 'Archive product',
+      pending: 'Archiving…',
     },
   },
   sourceChannel: sourceChannelLabels,

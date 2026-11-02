@@ -2,13 +2,11 @@
 import type { CustomerDetail, CustomerSummary, Page } from '@ssom/shared';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../../lib/api-context';
-import { useMe } from '../account/use-me';
+import { listApiPath } from '../../lib/use-list-params';
+import type { ListParams } from '../../lib/use-list-params';
+import { useBusinessId } from '../account/use-business';
 
-export interface CustomerListParams {
-  q: string;
-  page: number;
-  includeArchived: boolean;
-}
+export type CustomerListParams = ListParams;
 
 /**
  * Cache keys. They include the business, so one business's customers can never be shown to another
@@ -21,19 +19,9 @@ export const customerKeys = {
   detail: (businessId: string, id: string) => ['customers', businessId, 'detail', id] as const,
 };
 
-/** GET /customers query string; defaults are left out. */
-export function customerListPath({ q, page, includeArchived }: CustomerListParams): string {
-  const query = new URLSearchParams();
-  if (q !== '') query.set('q', q);
-  if (page > 1) query.set('page', String(page));
-  if (includeArchived) query.set('includeArchived', 'true');
-  const search = query.toString();
-  return search === '' ? '/customers' : `/customers?${search}`;
-}
-
-/** The business the cache keys belong to (already loaded by RequireBusiness). */
-export function useBusinessId(): string {
-  return useMe().data?.business?.id ?? 'none';
+/** GET /customers with the list's search, page and filter. */
+export function customerListPath(params: CustomerListParams): string {
+  return listApiPath('/customers', params);
 }
 
 export function useCustomerList(params: CustomerListParams) {
@@ -71,9 +59,4 @@ export function useCustomerSaved() {
       queryKey: [...customerKeys.all(businessId), 'list'],
     });
   };
-}
-
-/** The business's timezone, for showing dates on its calendar (§8.1). */
-export function useBusinessTimeZone(): string {
-  return useMe().data?.business?.timezone ?? 'Asia/Colombo';
 }
