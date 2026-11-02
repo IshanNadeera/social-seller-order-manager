@@ -7,6 +7,7 @@ import { HealthModule } from './common/health/health.module';
 import { PrismaModule } from './common/prisma.module';
 import { CustomersModule } from './customers/customers.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
+import { ProductsModule } from './products/products.module';
 
 @Module({})
 export class AppModule {
@@ -21,6 +22,7 @@ export class AppModule {
         HealthModule,
         OnboardingModule,
         CustomersModule,
+        ProductsModule,
       ],
     };
   }

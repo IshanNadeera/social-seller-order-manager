@@ -39,4 +39,7 @@ Vite picks up rebuilt files straight away; restart the API's dev server to load 
 - `schemas/customers.ts`: `customerCreateSchema` (with an optional first `address`), `customerUpdateSchema`, `customerListQuerySchema`, `addressCreateSchema` and `addressUpdateSchema`, plus their limits (`CUSTOMER_NAME_MAX_LENGTH`, `MAX_PAGE_SIZE`, `MAX_ACTIVE_ADDRESSES`, …).
   - Blank optional text becomes `null`, so clearing a form field clears the value. Emails are lower-cased.
   - Update schemas refuse an empty body ("Change at least one field."), but only when every field is valid, so an invalid field is reported alone.
-- Response types are in `src/api.ts` (`Page`, `CustomerSummary`, `CustomerDetail`, `CustomerAddressView`, …).
+- `schemas/products.ts`: `productCreateSchema`, `productUpdateSchema`, `productListQuerySchema`.
+- `schemas/money.ts`: `moneySchema()` for amounts sent as strings (`"1500.00"`, 0 to 99,999,999.99, at most 2 decimals; output normalised to two decimals) and `toMoneyString()`. JSON numbers are refused (§7.5).
+- `schemas/common.ts`: internal building blocks (blank → null, required/optional text, paged search query fields, "Change at least one field."). Only `DEFAULT_PAGE_SIZE`, `MAX_PAGE_SIZE` and `SEARCH_MAX_LENGTH` are exported from the package.
+- Response types are in `src/api.ts` (`Page`, `CustomerSummary`, `CustomerDetail`, `CustomerAddressView`, `ProductView`, …).

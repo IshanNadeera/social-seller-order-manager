@@ -86,3 +86,16 @@ export interface CustomerDetail extends CustomerSummary {
   updatedAt: string;
   addresses: CustomerAddressView[];
 }
+
+/** A product (GET /products, GET /products/:id, §9.3). Money is a string with two decimals (§7.5). */
+export interface ProductView {
+  id: string;
+  name: string;
+  sku: string | null;
+  description: string | null;
+  /** e.g. "1500.00" */
+  sellingPrice: string;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

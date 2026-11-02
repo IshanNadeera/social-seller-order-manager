@@ -1,11 +1,8 @@
 // The customer search filter (src/customers/customer-search.ts), without a database.
 // The database behaviour (ILIKE, endsWith on real rows) is covered in customers.db-spec.ts.
 import { describe, expect, it } from 'vitest';
-import {
-  CUSTOMER_LIST_ORDER,
-  customerSearchWhere,
-  escapeLike,
-} from '../src/customers/customer-search';
+import { escapeLike } from '../src/common/like';
+import { CUSTOMER_LIST_ORDER, customerSearchWhere } from '../src/customers/customer-search';
 
 const scope = { businessId: '5f0e7c1a-2b3c-4d5e-8f90-a1b2c3d4e5f6' };
 

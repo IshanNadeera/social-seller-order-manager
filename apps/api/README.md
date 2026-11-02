@@ -119,7 +119,7 @@ Every tenant-owned query is scoped to the business of the verified membership. R
 | `POST /customers/:id/archive`                        | Archive (customers are never deleted, §8.1). Repeating it is harmless and keeps the first date. Archived customers stay readable and leave the default list; `includeArchived=true` shows them. |
 
 - **Search (`src/customers/customer-search.ts`):** `q` matches any part of the name (case-insensitive, served by the trigram index), any part of the phone as typed, or, when `q` has 9 or more digits, the last 9 digits of the normalised phone. So `0771234567`, `+94 77 123 4567`, `771234567` and `0094771234567` all find the same customer.
-- **Prisma does not escape `%` and `_`** in `contains` / `startsWith` / `endsWith`. Pass user text through `escapeLike()` first, as the customer search does, or a search for `_` matches everything.
+- **Prisma does not escape `%` and `_`** in `contains` / `startsWith` / `endsWith`. Pass user text through `escapeLike()` (`src/common/like.ts`) first, as the customer and product searches do, or a search for `_` matches everything.
 - **Phones** go through `normalizePhone()` from `@ssom/shared` on create and update. A number that cannot be read is saved anyway, with `phoneE164: null` and `phoneWarning: 'PHONE_UNREADABLE'` in responses (§7.11).
 - Request schemas live in `@ssom/shared` (`customerCreateSchema`, `customerUpdateSchema`, `customerListQuerySchema`, `addressCreateSchema`, `addressUpdateSchema`), so the web forms (B6) use the same rules and messages.
 - Tests: `test/customer-search.spec.ts` (the filter, no database) and `test/customers.db-spec.ts` (every route against the database, with basic cross-tenant 404s; the full sweep is B5).
@@ -148,6 +148,23 @@ Every tenant-owned query is scoped to the business of the verified membership. R
   - An address of another customer or business: the standard 404.
 - Orders keep their own copy of the address (§7.11), so these changes never alter existing orders.
 - Tests: `test/addresses.db-spec.ts`, including two concurrent "make default" requests.
+
+## Products API (§6.7, §9.3, task B4)
+
+`src/products/`. All routes need a signed-in member and are scoped to their business.
+
+| Route                                               | What it does                                                                                                                                      |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /products?q=&page=&pageSize=&includeArchived=` | `q` matches any part of the name or SKU, ignoring case. 25 per page by default, at most 100, sorted by name then ID. Returns `Page<ProductView>`. |
+| `POST /products`                                    | Create (201). Name and `sellingPrice` required; SKU and description optional.                                                                     |
+| `GET /products/:id`                                 | One product, archived or not.                                                                                                                     |
+| `PATCH /products/:id`                               | Change only the fields sent; `null` or `""` clears SKU or description. An archived product is **422 `PRODUCT_ARCHIVED`**.                         |
+| `POST /products/:id/archive`                        | Archive (never deleted, §8.1). Repeating it is harmless.                                                                                          |
+
+- **Money (§7.5):** `sellingPrice` is sent and returned as a string (`"1500.00"`), 0 to 99,999,999.99 with at most 2 decimals (`moneySchema` in `@ssom/shared`). A JSON number is refused. Responses always have two decimals (`Decimal.toFixed(2)`).
+- **SKU:** kept as typed (trimmed) and unique among the business's **active** products, so `ABC-1` and `abc-1` are different. The partial unique index `products_sku_unique` enforces it, even for two requests at once. A clash is **409 `SKU_TAKEN`** with `fieldErrors.sku`. Archiving frees the SKU; blank means no SKU, and products without one never clash.
+- Orders copy the name, SKU and price when created (§8.2), so changing or archiving a product never changes existing orders.
+- Tests: `test/product-search.spec.ts` (the filter, no database) and `test/products.db-spec.ts` (every route, the SKU rules including a concurrent clash, and basic cross-tenant 404s; the full sweep is B5).
 
 ## Environment
 

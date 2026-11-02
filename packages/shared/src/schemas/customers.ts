@@ -2,24 +2,20 @@
 // the web forms (B6), so both apply the same rules and messages. Strict: unknown fields are refused.
 import { z } from 'zod';
 import { PHONE_MAX_LENGTH } from '../phone.js';
+import {
+  blankToNull,
+  changeAtLeastOneField,
+  changesSomething,
+  optionalText,
+  searchListQueryFields,
+} from './common.js';
 
 export const CUSTOMER_NAME_MAX_LENGTH = 100;
 export const CUSTOMER_NOTES_MAX_LENGTH = 1000;
 export const ADDRESS_FIELD_MAX_LENGTH = 200;
 export const ADDRESS_SHORT_FIELD_MAX_LENGTH = 50;
-export const CUSTOMER_SEARCH_MAX_LENGTH = 100;
-/** §6.3 / §9.5: default 25 per page, never more than 100. */
-export const DEFAULT_PAGE_SIZE = 25;
 /** Active addresses per customer. The customer page lists them all, so the list stays bounded. */
 export const MAX_ACTIVE_ADDRESSES = 20;
-export const MAX_PAGE_SIZE = 100;
-
-/** "" or only spaces → null, so a cleared form field clears the value. */
-const blankToNull = (value: unknown) =>
-  typeof value === 'string' && value.trim() === '' ? null : value;
-
-const optionalText = (max: number, message: string) =>
-  z.preprocess(blankToNull, z.string().trim().max(max, message).nullable().optional());
 
 const name = z
   .string({ error: 'Enter the customer’s name.' })
@@ -45,18 +41,6 @@ const notes = optionalText(
   CUSTOMER_NOTES_MAX_LENGTH,
   `Use at most ${CUSTOMER_NOTES_MAX_LENGTH} characters.`,
 );
-
-/**
- * For "send only what changes" bodies: an empty one is refused as a whole. Checked only when every
- * field is valid: zod leaves a failing field out of the value, so `{ name: "" }` would otherwise look
- * empty too and get a second, misleading error.
- */
-const changesSomething = (input: Record<string, unknown>) =>
-  Object.values(input).some((value) => value !== undefined);
-const changeAtLeastOneField = {
-  message: 'Change at least one field.',
-  when: (payload: { issues: readonly unknown[] }) => payload.issues.length === 0,
-};
 
 /** A delivery address (§7.11): only the first line is required besides recipient and phone. */
 export const addressInputSchema = z.strictObject({
@@ -130,28 +114,8 @@ export const addressUpdateSchema = addressInputSchema
   })
   .refine(changesSomething, changeAtLeastOneField);
 
-const pageNumber = z.coerce
-  .number({ error: 'Must be a whole number.' })
-  .int('Must be a whole number.')
-  .min(1, 'Must be 1 or more.');
-
 /** GET /customers query string. Values arrive as strings. */
-export const customerListQuerySchema = z.strictObject({
-  q: z
-    .string()
-    .trim()
-    .max(CUSTOMER_SEARCH_MAX_LENGTH, `Use at most ${CUSTOMER_SEARCH_MAX_LENGTH} characters.`)
-    .optional()
-    .transform((value) => (value === '' ? undefined : value)),
-  page: pageNumber.default(1),
-  pageSize: pageNumber
-    .max(MAX_PAGE_SIZE, `Use at most ${MAX_PAGE_SIZE}.`)
-    .default(DEFAULT_PAGE_SIZE),
-  includeArchived: z
-    .enum(['true', 'false'], { error: 'Use true or false.' })
-    .default('false')
-    .transform((value) => value === 'true'),
-});
+export const customerListQuerySchema = z.strictObject(searchListQueryFields);
 
 export type AddressInput = z.output<typeof addressInputSchema>;
 export type CustomerCreateRequest = z.input<typeof customerCreateSchema>;
