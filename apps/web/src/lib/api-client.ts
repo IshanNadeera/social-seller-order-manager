@@ -78,6 +78,14 @@ function stringRecord(value: unknown): Record<string, string> {
   );
 }
 
+/** A request cancelled by its caller fails as fetch() would: with the signal's reason (an AbortError). */
+function throwIfCancelled(signal: AbortSignal | undefined): void {
+  if (!signal?.aborted) return;
+  const reason: unknown = signal.reason;
+  if (reason instanceof Error) throw reason;
+  throw new DOMException('The request was cancelled.', 'AbortError');
+}
+
 export function createApiClient(config: ApiClientConfig): ApiClient {
   // Called through a wrapper so the browser's fetch is never invoked with a foreign `this`.
   const fetchImpl: typeof fetch = config.fetch ?? ((input, init) => globalThis.fetch(input, init));
@@ -91,8 +99,12 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   ): Promise<T> {
     if (!path.startsWith('/')) throw new Error(`API paths start with "/": ${path}`);
 
+    throwIfCancelled(options.signal);
     // Read the session for every request, so a refreshed token is always the one sent.
     const { data } = await config.auth.getSession();
+    // The caller may have cancelled while the session was read. A signal that is already aborted
+    // never fires 'abort' again, so check now; otherwise the request would run on until the timeout.
+    throwIfCancelled(options.signal);
     const token = data.session?.access_token;
     if (!token) throw new ApiError(401, 'NOT_SIGNED_IN', m.unauthorized);
 

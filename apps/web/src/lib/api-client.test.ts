@@ -179,6 +179,16 @@ describe('API client', () => {
     await expect(request).rejects.toMatchObject({ name: 'AbortError' });
   });
 
+  it('never calls fetch for a request cancelled before it starts', async () => {
+    const { api, fetch } = setup();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(api.get('/me', { signal: controller.signal })).rejects.toMatchObject({
+      name: 'AbortError',
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('only accepts paths that start with a slash', async () => {
     const { api, fetch } = setup();
     await expect(api.get('https://evil.example/x')).rejects.toThrow(/start with/);
