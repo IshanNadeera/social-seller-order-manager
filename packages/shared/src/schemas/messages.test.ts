@@ -11,6 +11,7 @@ import {
   customerListQuerySchema,
   customerUpdateSchema,
   onboardingRequestSchema,
+  orderCreateSchema,
   productCreateSchema,
   productListQuerySchema,
   productUpdateSchema,
@@ -26,10 +27,22 @@ const SCHEMAS = {
   productCreateSchema,
   productUpdateSchema,
   productListQuerySchema,
+  orderCreateSchema,
 };
 
 /** Wrong types and sizes a client could send for any field. */
-const BAD_VALUES: unknown[] = [12345, true, [], ['a', 'b'], {}, null, '  ', 'x'.repeat(5000)];
+const BAD_VALUES: unknown[] = [
+  12345,
+  true,
+  [],
+  ['a', 'b'],
+  {},
+  null,
+  '  ',
+  'x'.repeat(5000),
+  [{}],
+  [5],
+];
 
 /** zod's own English wording. */
 const BUILT_IN = /invalid input|expected|received|too small|too big|unrecognized/i;

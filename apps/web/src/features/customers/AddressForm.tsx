@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { addressCreateSchema } from '@ssom/shared';
+import { addressCreateSchema, isSriLankaDistrict } from '@ssom/shared';
 import type {
   AddressCreateInput,
   AddressCreateRequest,
@@ -7,7 +7,8 @@ import type {
   CustomerDetail,
 } from '@ssom/shared';
 import { useMutation } from '@tanstack/react-query';
-import { useId } from 'react';
+import { useId, useState } from 'react';
+import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { ApiErrorMessage } from '../../components/ApiErrorMessage';
 import { CheckboxField, FormAlert, SubmitButton, buttonClass } from '../../components/form';
@@ -32,6 +33,21 @@ function toFormValues(address: CustomerAddressView): AddressCreateRequest {
     postalCode: address.postalCode ?? '',
     label: address.label ?? '',
   };
+}
+
+/**
+ * The address schema for this form. Editing an address saved before the district list (§7.11) keeps
+ * its old district: that exact value passes as "unchanged" (it isn't sent unless the seller changes
+ * it), so editing another field never fails on it. A new choice must still be from the list.
+ */
+function addressSchemaKeeping(savedDistrict: string | null) {
+  if (savedDistrict === null || isSriLankaDistrict(savedDistrict)) return addressCreateSchema;
+  return addressCreateSchema.extend({
+    district: z.preprocess(
+      (value) => (value === savedDistrict ? undefined : value),
+      addressCreateSchema.shape.district,
+    ),
+  });
 }
 
 const EMPTY: AddressCreateRequest = {
@@ -72,8 +88,10 @@ export function AddressForm({
   const editing = address !== undefined;
   const base = `/customers/${encodeURIComponent(customerId)}/addresses`;
 
+  // Built once: the saved district can't change while the form is open.
+  const [schema] = useState(() => addressSchemaKeeping(address?.district ?? null));
   const form = useForm<AddressCreateRequest, unknown, AddressCreateInput>({
-    resolver: zodResolver(addressCreateSchema),
+    resolver: zodResolver(schema),
     defaultValues:
       address === undefined ? { ...EMPTY, ...prefill, isDefault: false } : toFormValues(address),
   });

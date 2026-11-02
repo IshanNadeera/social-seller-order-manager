@@ -15,3 +15,4 @@ export * from './schemas/money.js';
 export * from './schemas/onboarding.js';
 export * from './schemas/customers.js';
 export * from './schemas/products.js';
+export * from './schemas/orders.js';

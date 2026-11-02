@@ -1,5 +1,15 @@
 // Request and response shapes shared by the API and the web app (docs/DEVELOPMENT.md §9).
-import type { MemberRole } from './enums.js';
+import type {
+  CodStatus,
+  DeliveryStatus,
+  FulfilmentType,
+  MemberRole,
+  OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
+  SourceChannel,
+} from './enums.js';
+import type { OrderStage } from './stage.js';
 
 /** GET /api/v1/health (§9.1, §11.7). Reveals no configuration. */
 export type HealthResponse =
@@ -96,6 +106,61 @@ export interface ProductView {
   /** e.g. "1500.00" */
   sellingPrice: string;
   archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** An order line (§8.2 order_items): names, SKU and price are copies taken when it was saved. */
+export interface OrderItemView {
+  id: string;
+  productId: string | null;
+  name: string;
+  sku: string | null;
+  quantity: number;
+  unitPrice: string;
+  lineTotal: string;
+}
+
+/** The order's own copy of the delivery details (§8.2 deliveries). */
+export interface OrderDeliveryView {
+  status: DeliveryStatus;
+  recipientName: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string | null;
+  district: string | null;
+  postalCode: string | null;
+  courierName: string | null;
+  trackingNumber: string | null;
+  codAmount: string;
+  codStatus: CodStatus;
+}
+
+/** POST /orders and GET /orders/:id (§9.4). Money as strings with two decimals (§7.5). */
+export interface OrderDetail {
+  id: string;
+  orderNumber: string;
+  orderStatus: OrderStatus;
+  paymentStatus: PaymentStatus;
+  /** Derived display stage (§7.3). */
+  stage: OrderStage;
+  sourceChannel: SourceChannel;
+  sourceNote: string | null;
+  fulfilmentType: FulfilmentType;
+  paymentMethod: PaymentMethod;
+  customer: { id: string | null; name: string; phone: string | null };
+  items: OrderItemView[];
+  subtotal: string;
+  discountAmount: string;
+  deliveryFee: string;
+  totalAmount: string;
+  amountPaid: string;
+  amountRefunded: string;
+  balanceDue: string;
+  refundOwed: string;
+  delivery: OrderDeliveryView | null;
+  notes: string | null;
   createdAt: string;
   updatedAt: string;
 }
