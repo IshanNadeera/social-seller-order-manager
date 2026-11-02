@@ -81,11 +81,9 @@ describe('recalculatePaymentSummary', () => {
       await act();
       expect(await recalculate(id)).toEqual({ amountPaid, amountRefunded, paymentStatus });
       const row = await stored(id);
-      expect([row.amountPaid.toFixed(2), row.amountRefunded.toFixed(2), row.paymentStatus]).toEqual([
-        amountPaid,
-        amountRefunded,
-        paymentStatus,
-      ]);
+      expect([row.amountPaid.toFixed(2), row.amountRefunded.toFixed(2), row.paymentStatus]).toEqual(
+        [amountPaid, amountRefunded, paymentStatus],
+      );
     }
   });
 
@@ -111,10 +109,10 @@ describe('recalculatePaymentSummary', () => {
     await prisma.$transaction(async (tx) => {
       await recalculatePaymentSummary(tx, { businessId: tenants.a.businessId }, id);
       // Another connection cannot take the same lock while this transaction is open.
-      otherConnection = await prisma
-        .$queryRaw`SELECT 1 FROM app.orders WHERE id = ${id}::uuid FOR UPDATE NOWAIT`
-        .then(() => 'got the lock')
-        .catch((error: unknown) => String(error));
+      otherConnection =
+        await prisma.$queryRaw`SELECT 1 FROM app.orders WHERE id = ${id}::uuid FOR UPDATE NOWAIT`
+          .then(() => 'got the lock')
+          .catch((error: unknown) => String(error));
     });
     expect(otherConnection).toMatch(/55P03|could not obtain lock/);
   });

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { DELIVERY_STATUSES, ORDER_STAGES, ORDER_STAGE_LABELS, ORDER_STATUSES, orderStage } from './index.js';
+import {
+  DELIVERY_STATUSES,
+  ORDER_STAGES,
+  ORDER_STAGE_LABELS,
+  ORDER_STATUSES,
+  orderStage,
+} from './index.js';
 import type { DeliveryStatus, OrderStage, OrderStatus } from './index.js';
 
 const ANY: (DeliveryStatus | null)[] = [null, ...DELIVERY_STATUSES];

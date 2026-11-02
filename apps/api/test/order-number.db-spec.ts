@@ -68,12 +68,18 @@ describe('allocateOrderNumber', () => {
   });
 
   it('uses the new prefix for new orders only, and pads beyond 4 digits', async () => {
-    await prisma.business.update({ where: { id: tenants.a.businessId }, data: { orderPrefix: 'NEW' } });
+    await prisma.business.update({
+      where: { id: tenants.a.businessId },
+      data: { orderPrefix: 'NEW' },
+    });
     await prisma.businessCounter.update({
       where: { businessId: tenants.a.businessId },
       data: { nextOrderSeq: 12345 },
     });
-    expect(await allocate(tenants.a.businessId)).toEqual({ sequence: 12345, orderNumber: 'NEW-12345' });
+    expect(await allocate(tenants.a.businessId)).toEqual({
+      sequence: 12345,
+      orderNumber: 'NEW-12345',
+    });
   });
 
   it('fails loudly for a business without a counter', async () => {

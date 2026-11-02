@@ -75,7 +75,10 @@ beforeAll(async () => {
     .overrideProvider(JWKS)
     .useValue(auth.jwks)
     .compile();
-  app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false, logger: false });
+  app = moduleRef.createNestApplication<NestExpressApplication>({
+    bodyParser: false,
+    logger: false,
+  });
   configureApp(app, env);
   await app.init();
   server = app.getHttpServer();

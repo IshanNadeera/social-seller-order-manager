@@ -4,7 +4,8 @@ import { createHash } from 'node:crypto';
 
 /** JSON with object keys sorted at every level; undefined properties are left out, as JSON does. */
 export function canonicalJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map((item) => canonicalJson(item ?? null)).join(',')}]`;
+  if (Array.isArray(value))
+    return `[${value.map((item) => canonicalJson(item ?? null)).join(',')}]`;
   if (value !== null && typeof value === 'object') {
     const entries = Object.entries(value)
       .filter(([, item]) => item !== undefined)
@@ -16,5 +17,7 @@ export function canonicalJson(value: unknown): string {
 
 /** SHA-256 of the endpoint and the canonical payload. */
 export function requestHash(endpoint: string, payload: unknown): string {
-  return createHash('sha256').update(`${endpoint}\n${canonicalJson(payload)}`).digest('hex');
+  return createHash('sha256')
+    .update(`${endpoint}\n${canonicalJson(payload)}`)
+    .digest('hex');
 }

@@ -12,10 +12,7 @@ export const MIN_QUANTITY = 1;
 export const MAX_QUANTITY = 9999;
 
 export type OrderCalculationErrorCode =
-  | 'INVALID_AMOUNT'
-  | 'INVALID_QUANTITY'
-  | 'AMOUNT_TOO_LARGE'
-  | 'DISCOUNT_EXCEEDS_SUBTOTAL';
+  'INVALID_AMOUNT' | 'INVALID_QUANTITY' | 'AMOUNT_TOO_LARGE' | 'DISCOUNT_EXCEEDS_SUBTOTAL';
 
 /** A rule of §7.5 was broken. The order service turns it into a 422 with this code. */
 export class OrderCalculationError extends Error {

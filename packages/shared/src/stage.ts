@@ -42,7 +42,10 @@ export const ORDER_STAGE_LABELS: Record<OrderStage, string> = {
  * DELIVERED or RETURNED delivery: those move the order to COMPLETED / RETURNED in the same
  * transaction, §7.2) fall back to the order status alone, so a screen never breaks on them.
  */
-export function orderStage(orderStatus: OrderStatus, deliveryStatus: DeliveryStatus | null): OrderStage {
+export function orderStage(
+  orderStatus: OrderStatus,
+  deliveryStatus: DeliveryStatus | null,
+): OrderStage {
   switch (orderStatus) {
     case 'NEW':
       return 'NEW';

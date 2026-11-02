@@ -19,8 +19,11 @@ function failure(fn: () => unknown) {
   throw new Error('expected an OrderCalculationError');
 }
 
-const totals = (items: { quantity: number; unitPrice: string }[], discountAmount = '0', deliveryFee = '0') =>
-  calculateOrderTotals({ items, discountAmount, deliveryFee });
+const totals = (
+  items: { quantity: number; unitPrice: string }[],
+  discountAmount = '0',
+  deliveryFee = '0',
+) => calculateOrderTotals({ items, discountAmount, deliveryFee });
 
 describe('lineTotal', () => {
   it.each([
@@ -139,31 +142,69 @@ describe('calculateOrderTotals', () => {
 
   it('names the failing line', () => {
     expect(
-      failure(() => totals([{ quantity: 1, unitPrice: '1' }, { quantity: 0, unitPrice: '1' }])),
+      failure(() =>
+        totals([
+          { quantity: 1, unitPrice: '1' },
+          { quantity: 0, unitPrice: '1' },
+        ]),
+      ),
     ).toEqual({ code: 'INVALID_QUANTITY', field: 'items[1].quantity' });
   });
 });
 
 describe('calculateBalance', () => {
   const balance = (paid: string, refunded: string, closed = false) =>
-    calculateBalance({ totalAmount: '1000.00', amountPaid: paid, amountRefunded: refunded, closed });
+    calculateBalance({
+      totalAmount: '1000.00',
+      amountPaid: paid,
+      amountRefunded: refunded,
+      closed,
+    });
 
   it('active order: balance due is what is left to pay, never below zero', () => {
-    expect(balance('0', '0')).toEqual({ netPaid: '0.00', balanceDue: '1000.00', refundOwed: '0.00' });
-    expect(balance('400', '0')).toEqual({ netPaid: '400.00', balanceDue: '600.00', refundOwed: '0.00' });
-    expect(balance('1000', '200')).toEqual({ netPaid: '800.00', balanceDue: '200.00', refundOwed: '0.00' });
+    expect(balance('0', '0')).toEqual({
+      netPaid: '0.00',
+      balanceDue: '1000.00',
+      refundOwed: '0.00',
+    });
+    expect(balance('400', '0')).toEqual({
+      netPaid: '400.00',
+      balanceDue: '600.00',
+      refundOwed: '0.00',
+    });
+    expect(balance('1000', '200')).toEqual({
+      netPaid: '800.00',
+      balanceDue: '200.00',
+      refundOwed: '0.00',
+    });
     // The total was edited below what was paid: nothing due (refund decisions are §7.4's).
     expect(
-      calculateBalance({ totalAmount: '500', amountPaid: '800', amountRefunded: '0', closed: false }),
+      calculateBalance({
+        totalAmount: '500',
+        amountPaid: '800',
+        amountRefunded: '0',
+        closed: false,
+      }),
     ).toEqual({ netPaid: '800.00', balanceDue: '0.00', refundOwed: '0.00' });
   });
 
   it('cancelled or returned order: nothing due, and the money held is owed back', () => {
-    expect(balance('600', '100', true)).toEqual({ netPaid: '500.00', balanceDue: '0.00', refundOwed: '500.00' });
-    expect(balance('0', '0', true)).toEqual({ netPaid: '0.00', balanceDue: '0.00', refundOwed: '0.00' });
+    expect(balance('600', '100', true)).toEqual({
+      netPaid: '500.00',
+      balanceDue: '0.00',
+      refundOwed: '500.00',
+    });
+    expect(balance('0', '0', true)).toEqual({
+      netPaid: '0.00',
+      balanceDue: '0.00',
+      refundOwed: '0.00',
+    });
   });
 
   it('refuses amounts that are not decimal strings', () => {
-    expect(failure(() => balance('x', '0'))).toEqual({ code: 'INVALID_AMOUNT', field: 'amountPaid' });
+    expect(failure(() => balance('x', '0'))).toEqual({
+      code: 'INVALID_AMOUNT',
+      field: 'amountPaid',
+    });
   });
 });

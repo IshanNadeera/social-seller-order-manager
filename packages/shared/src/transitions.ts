@@ -29,11 +29,7 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderTransitionRule
   ],
   PENDING_CONFIRMATION: [{ to: 'CONFIRMED' }, { to: 'CANCELLED', reasonRequired: true }],
   // Skipping PREPARING is allowed.
-  CONFIRMED: [
-    { to: 'PREPARING' },
-    { to: 'READY' },
-    { to: 'CANCELLED', reasonRequired: true },
-  ],
+  CONFIRMED: [{ to: 'PREPARING' }, { to: 'READY' }, { to: 'CANCELLED', reasonRequired: true }],
   PREPARING: [{ to: 'READY' }, { to: 'CANCELLED', reasonRequired: true }],
   READY: [
     { to: 'COMPLETED', fulfilment: 'PICKUP' },
@@ -55,14 +51,10 @@ export interface OrderTransitionContext {
 }
 
 export type TransitionErrorCode =
-  | 'INVALID_TRANSITION'
-  | 'REASON_REQUIRED'
-  | 'ORDER_DISPATCHED'
-  | 'OWNER_ONLY';
+  'INVALID_TRANSITION' | 'REASON_REQUIRED' | 'ORDER_DISPATCHED' | 'OWNER_ONLY';
 
 export type TransitionCheck =
-  | { ok: true }
-  | { ok: false; code: TransitionErrorCode; message: string };
+  { ok: true } | { ok: false; code: TransitionErrorCode; message: string };
 
 const OK: TransitionCheck = { ok: true };
 const refuse = (code: TransitionErrorCode, message: string): TransitionCheck => ({
@@ -81,9 +73,16 @@ export function checkOrderTransition(
 ): TransitionCheck {
   const rule = ORDER_TRANSITIONS[from].find((candidate) => candidate.to === to);
   if (rule === undefined || (rule.fulfilment && rule.fulfilment !== context.fulfilmentType)) {
-    return refuse('INVALID_TRANSITION', 'This order can’t be moved to that status from where it is now.');
+    return refuse(
+      'INVALID_TRANSITION',
+      'This order can’t be moved to that status from where it is now.',
+    );
   }
-  if (rule.notDispatched && context.deliveryStatus !== null && context.deliveryStatus !== 'PENDING') {
+  if (
+    rule.notDispatched &&
+    context.deliveryStatus !== null &&
+    context.deliveryStatus !== 'PENDING'
+  ) {
     return refuse(
       'ORDER_DISPATCHED',
       'This order has already been sent out, so it can’t be cancelled. Record the delivery result instead.',
@@ -156,7 +155,10 @@ export function checkDeliveryTransition(
 ): TransitionCheck {
   const rule = DELIVERY_TRANSITIONS[from].find((candidate) => candidate.to === to);
   if (rule === undefined) {
-    return refuse('INVALID_TRANSITION', 'This delivery can’t be moved to that status from where it is now.');
+    return refuse(
+      'INVALID_TRANSITION',
+      'This delivery can’t be moved to that status from where it is now.',
+    );
   }
   if (rule.orderMustBe !== undefined && context.orderStatus !== rule.orderMustBe) {
     return refuse('INVALID_TRANSITION', 'Mark the order as ready before sending it out.');

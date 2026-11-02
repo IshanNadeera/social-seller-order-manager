@@ -35,7 +35,12 @@ const ORDER_ALLOWED: Record<OrderStatus, readonly OrderStatus[]> = {
 };
 
 /** The most permissive context: an owner's pickup order, not dispatched, with a reason. */
-const permissive = { fulfilmentType: 'PICKUP', deliveryStatus: null, role: 'OWNER', reason: 'r' } as const;
+const permissive = {
+  fulfilmentType: 'PICKUP',
+  deliveryStatus: null,
+  role: 'OWNER',
+  reason: 'r',
+} as const;
 
 describe('order transitions: every pair', () => {
   it.each(pairs(ORDER_STATUSES, ORDER_ALLOWED))('%s → %s allowed: %s', (from, to, allowed) => {
@@ -46,7 +51,11 @@ describe('order transitions: every pair', () => {
 });
 
 describe('order transition conditions', () => {
-  const delivery = { fulfilmentType: 'DELIVERY', deliveryStatus: 'PENDING', role: 'OWNER' } as const;
+  const delivery = {
+    fulfilmentType: 'DELIVERY',
+    deliveryStatus: 'PENDING',
+    role: 'OWNER',
+  } as const;
 
   it('READY → COMPLETED is for pickup orders only (delivery orders complete through delivery)', () => {
     expect(checkOrderTransition('READY', 'COMPLETED', permissive).ok).toBe(true);
@@ -73,14 +82,22 @@ describe('order transition conditions', () => {
   });
 
   it('COMPLETED → RETURNED is an owner correction with a reason, for pickup orders only', () => {
-    expect(checkOrderTransition('COMPLETED', 'RETURNED', { ...permissive, role: 'STAFF' })).toMatchObject({
+    expect(
+      checkOrderTransition('COMPLETED', 'RETURNED', { ...permissive, role: 'STAFF' }),
+    ).toMatchObject({
       code: 'OWNER_ONLY',
     });
-    expect(checkOrderTransition('COMPLETED', 'RETURNED', { ...permissive, reason: '' })).toMatchObject({
+    expect(
+      checkOrderTransition('COMPLETED', 'RETURNED', { ...permissive, reason: '' }),
+    ).toMatchObject({
       code: 'REASON_REQUIRED',
     });
     expect(
-      checkOrderTransition('COMPLETED', 'RETURNED', { ...delivery, deliveryStatus: 'DELIVERED', reason: 'r' }),
+      checkOrderTransition('COMPLETED', 'RETURNED', {
+        ...delivery,
+        deliveryStatus: 'DELIVERED',
+        reason: 'r',
+      }),
     ).toMatchObject({ code: 'INVALID_TRANSITION' });
   });
 
@@ -90,7 +107,9 @@ describe('order transition conditions', () => {
 
   it('lists the actions to show', () => {
     expect(allowedOrderTransitions('READY', delivery)).toEqual(['CANCELLED']);
-    expect(allowedOrderTransitions('READY', { ...delivery, deliveryStatus: 'DISPATCHED' })).toEqual([]);
+    expect(allowedOrderTransitions('READY', { ...delivery, deliveryStatus: 'DISPATCHED' })).toEqual(
+      [],
+    );
     expect(allowedOrderTransitions('READY', permissive)).toEqual(['COMPLETED', 'CANCELLED']);
     expect(allowedOrderTransitions('COMPLETED', { ...permissive, role: 'STAFF' })).toEqual([]);
     expect(allowedOrderTransitions('CANCELLED', permissive)).toEqual([]);
@@ -108,11 +127,18 @@ const DELIVERY_ALLOWED: Record<DeliveryStatus, readonly DeliveryStatus[]> = {
 };
 
 describe('delivery transitions: every pair', () => {
-  it.each(pairs(DELIVERY_STATUSES, DELIVERY_ALLOWED))('%s → %s allowed: %s', (from, to, allowed) => {
-    const check = checkDeliveryTransition(from, to, { orderStatus: 'READY', role: 'OWNER', reason: 'r' });
-    expect(check.ok).toBe(allowed);
-    if (!allowed) expect(check).toMatchObject({ code: 'INVALID_TRANSITION' });
-  });
+  it.each(pairs(DELIVERY_STATUSES, DELIVERY_ALLOWED))(
+    '%s → %s allowed: %s',
+    (from, to, allowed) => {
+      const check = checkDeliveryTransition(from, to, {
+        orderStatus: 'READY',
+        role: 'OWNER',
+        reason: 'r',
+      });
+      expect(check.ok).toBe(allowed);
+      if (!allowed) expect(check).toMatchObject({ code: 'INVALID_TRANSITION' });
+    },
+  );
 });
 
 describe('delivery transition conditions', () => {
@@ -121,25 +147,39 @@ describe('delivery transition conditions', () => {
   it('dispatch (first or again) needs a READY order', () => {
     for (const from of ['PENDING', 'FAILED'] as const) {
       expect(checkDeliveryTransition(from, 'DISPATCHED', owner).ok).toBe(true);
-      expect(checkDeliveryTransition(from, 'DISPATCHED', { ...owner, orderStatus: 'PREPARING' })).toMatchObject({
+      expect(
+        checkDeliveryTransition(from, 'DISPATCHED', { ...owner, orderStatus: 'PREPARING' }),
+      ).toMatchObject({
         code: 'INVALID_TRANSITION',
       });
     }
   });
 
   it('FAILED needs a reason', () => {
-    expect(checkDeliveryTransition('DISPATCHED', 'FAILED', owner)).toMatchObject({ code: 'REASON_REQUIRED' });
-    expect(checkDeliveryTransition('DISPATCHED', 'FAILED', { ...owner, reason: 'Not home' }).ok).toBe(true);
+    expect(checkDeliveryTransition('DISPATCHED', 'FAILED', owner)).toMatchObject({
+      code: 'REASON_REQUIRED',
+    });
+    expect(
+      checkDeliveryTransition('DISPATCHED', 'FAILED', { ...owner, reason: 'Not home' }).ok,
+    ).toBe(true);
   });
 
   it('DELIVERED → RETURNED is an owner correction with a reason', () => {
     const completed = { orderStatus: 'COMPLETED', reason: 'Damaged' } as const;
-    expect(checkDeliveryTransition('DELIVERED', 'RETURNED', { ...completed, role: 'OWNER' }).ok).toBe(true);
-    expect(checkDeliveryTransition('DELIVERED', 'RETURNED', { ...completed, role: 'STAFF' })).toMatchObject({
+    expect(
+      checkDeliveryTransition('DELIVERED', 'RETURNED', { ...completed, role: 'OWNER' }).ok,
+    ).toBe(true);
+    expect(
+      checkDeliveryTransition('DELIVERED', 'RETURNED', { ...completed, role: 'STAFF' }),
+    ).toMatchObject({
       code: 'OWNER_ONLY',
     });
     expect(
-      checkDeliveryTransition('DELIVERED', 'RETURNED', { ...completed, role: 'OWNER', reason: ' ' }),
+      checkDeliveryTransition('DELIVERED', 'RETURNED', {
+        ...completed,
+        role: 'OWNER',
+        reason: ' ',
+      }),
     ).toMatchObject({ code: 'REASON_REQUIRED' });
   });
 
@@ -149,8 +189,12 @@ describe('delivery transition conditions', () => {
 
   it('lists the actions to show', () => {
     expect(allowedDeliveryTransitions('DISPATCHED', owner)).toEqual(['DELIVERED', 'FAILED']);
-    expect(allowedDeliveryTransitions('PENDING', { ...owner, orderStatus: 'CONFIRMED' })).toEqual([]);
-    expect(allowedDeliveryTransitions('DELIVERED', { orderStatus: 'COMPLETED', role: 'STAFF' })).toEqual([]);
+    expect(allowedDeliveryTransitions('PENDING', { ...owner, orderStatus: 'CONFIRMED' })).toEqual(
+      [],
+    );
+    expect(
+      allowedDeliveryTransitions('DELIVERED', { orderStatus: 'COMPLETED', role: 'STAFF' }),
+    ).toEqual([]);
   });
 });
 

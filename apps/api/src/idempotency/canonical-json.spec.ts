@@ -22,7 +22,9 @@ describe('canonicalJson', () => {
 
 describe('requestHash', () => {
   it('is the same for the same request in any key order', () => {
-    expect(requestHash('POST /orders', { a: 1, b: '2' })).toBe(requestHash('POST /orders', { b: '2', a: 1 }));
+    expect(requestHash('POST /orders', { a: 1, b: '2' })).toBe(
+      requestHash('POST /orders', { b: '2', a: 1 }),
+    );
   });
 
   it('differs for a different body or endpoint', () => {

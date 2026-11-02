@@ -25,7 +25,13 @@ export interface EditLockOrder {
 }
 
 /** The seller is still working on the order (§7.4: NEW to READY). */
-const OPEN: readonly OrderStatus[] = ['NEW', 'PENDING_CONFIRMATION', 'CONFIRMED', 'PREPARING', 'READY'];
+const OPEN: readonly OrderStatus[] = [
+  'NEW',
+  'PENDING_CONFIRMATION',
+  'CONFIRMED',
+  'PREPARING',
+  'READY',
+];
 const FINISHED: readonly OrderStatus[] = ['COMPLETED', 'CANCELLED', 'RETURNED'];
 
 /** Not yet handed to the courier: a pickup order, or a delivery still PENDING. */
@@ -39,8 +45,7 @@ export function editableGroups(order: EditLockOrder): Record<EditGroup, boolean>
   return {
     items: open && notDispatched(order),
     deliveryAddress: isDelivery && open && notDispatched(order),
-    courier:
-      isDelivery && order.orderStatus !== 'RETURNED' && order.deliveryStatus !== 'RETURNED',
+    courier: isDelivery && order.orderStatus !== 'RETURNED' && order.deliveryStatus !== 'RETURNED',
     notes: true,
     sourceChannel: !FINISHED.includes(order.orderStatus),
     fulfilmentType: open && notDispatched(order),
@@ -54,8 +59,7 @@ export type EditLockErrorCode =
   | 'ORDER_TOTAL_BELOW_PAID';
 
 export type EditCheck =
-  | { ok: true }
-  | { ok: false; code: EditLockErrorCode; group: EditGroup; message: string };
+  { ok: true } | { ok: false; code: EditLockErrorCode; group: EditGroup; message: string };
 
 /** For an edit to `items`: the new total, and what the customer has paid so far, net of refunds. */
 export interface EditMoney {
@@ -75,7 +79,10 @@ export function checkOrderEdit(
   const editable = editableGroups(order);
   for (const group of groups) {
     if (editable[group]) continue;
-    if ((group === 'deliveryAddress' || group === 'courier') && order.fulfilmentType !== 'DELIVERY') {
+    if (
+      (group === 'deliveryAddress' || group === 'courier') &&
+      order.fulfilmentType !== 'DELIVERY'
+    ) {
       return {
         ok: false,
         code: 'NOT_A_DELIVERY_ORDER',
