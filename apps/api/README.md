@@ -168,6 +168,32 @@ Every tenant-owned query is scoped to the business of the verified membership. R
 - Orders copy the name, SKU and price when created (§8.2), so changing or archiving a product never changes existing orders.
 - Tests: `test/product-search.spec.ts` (the filter, no database) and `test/products.db-spec.ts` (every route, the SKU rules including a concurrent clash, and basic cross-tenant 404s; the full sweep is B5).
 
+## Idempotency (§9.8, ADR-017, task C6)
+
+`src/idempotency/`. `POST /orders`, `POST /orders/:id/payments` and `POST /orders/:id/cod/settle` need an `Idempotency-Key` header (a UUID the browser makes per action), so a retry on a weak network never creates a second order or payment.
+
+```ts
+@Post()
+async create(@CurrentAuth() auth, @IdempotencyKey() key: string, @Body(pipe) input, @Res({ passthrough: true }) res: Response) {
+  const result = await this.idempotency.execute(auth, { key, endpoint: 'POST /orders', payload: input },
+    (tx) => this.orders.create(tx, auth, input));
+  res.status(result.status);
+  if (result.replayed) res.setHeader('Idempotent-Replayed', 'true');
+  return result.body;
+}
+```
+
+- `@IdempotencyKey()` refuses a missing key (400 `IDEMPOTENCY_KEY_REQUIRED`) or one that isn't a UUID (400 `IDEMPOTENCY_KEY_INVALID`).
+- `IdempotencyService.execute()` runs the work in **one transaction with the key row**, so the record and its key are saved together or not at all. It is a service, not a middleware, for that reason.
+  - Same key, same request: the stored status and body, without running again.
+  - Same key, different body, endpoint or user: **409 `IDEMPOTENCY_KEY_REUSED`**.
+  - Two attempts at once: the second waits for the first, then gets its answer.
+  - If the work fails, the key is rolled back too, so a retry runs fresh.
+- Keys belong to one business. Put real IDs in `endpoint` (`POST /orders/<id>/payments`), so a key can't be reused across orders.
+- The request is fingerprinted from the validated body with keys sorted (`canonical-json.ts`), so key order doesn't matter.
+- `deleteExpired()` removes responses older than 48 hours (§8.2). The scheduled job that calls it comes with deployment.
+- Tests: `src/idempotency/canonical-json.spec.ts`, `test/idempotency.db-spec.ts`.
+
 ## Environment
 
 - `src/common/env.ts` validates the environment with Zod before Nest starts (§10.4). If anything is missing or invalid, the API lists every problem by variable name (never by value) and exits. `apps/api/.env.example` documents each variable.
