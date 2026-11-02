@@ -3,6 +3,7 @@
 // example.test domain; phone numbers are sequential 077 000 00xx placeholders; streets are "Demo Lane".
 // Fixed IDs make the seed idempotent: running it again updates these rows instead of adding more.
 // test/demo-data.spec.ts checks all of this.
+import type { SriLankaDistrict } from '@ssom/shared';
 
 export const DEMO_OWNER = {
   id: '00000000-0000-4000-8000-000000000001',
@@ -28,7 +29,8 @@ export interface DemoAddress {
   addressLine1: string;
   addressLine2: string | null;
   city: string | null;
-  district: string | null;
+  /** One of the 25 districts (§7.11): a misspelling is a type error. */
+  district: SriLankaDistrict | null;
   postalCode: string | null;
   isDefault: boolean;
 }
@@ -48,7 +50,7 @@ const address = (
   recipientName: string,
   phone: string,
   city: string,
-  district: string,
+  district: SriLankaDistrict,
   extra: Partial<DemoAddress> = {},
 ): DemoAddress => ({
   id: `00000000-0000-4000-8000-${String(300 + n).padStart(12, '0')}`,

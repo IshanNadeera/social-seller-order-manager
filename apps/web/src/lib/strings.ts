@@ -1,9 +1,39 @@
-import type { SourceChannel } from '@ssom/shared';
+import type { SourceChannel, SriLankaDistrict } from '@ssom/shared';
 
 // Every piece of user-facing text lives here, so Sinhala and Tamil can be added later
 // without hunting through components (docs/DEVELOPMENT.md §6.9).
 // Labels for shared codes are typed with Record<Code, string>, so a code added to
 // @ssom/shared without a label here is a type error.
+
+// The 25 districts (§7.11). The stored value is the English name; this is what people read, so a
+// Sinhala or Tamil version of this file can show the local names.
+const districtLabels: Record<SriLankaDistrict, string> = {
+  Ampara: 'Ampara',
+  Anuradhapura: 'Anuradhapura',
+  Badulla: 'Badulla',
+  Batticaloa: 'Batticaloa',
+  Colombo: 'Colombo',
+  Galle: 'Galle',
+  Gampaha: 'Gampaha',
+  Hambantota: 'Hambantota',
+  Jaffna: 'Jaffna',
+  Kalutara: 'Kalutara',
+  Kandy: 'Kandy',
+  Kegalle: 'Kegalle',
+  Kilinochchi: 'Kilinochchi',
+  Kurunegala: 'Kurunegala',
+  Mannar: 'Mannar',
+  Matale: 'Matale',
+  Matara: 'Matara',
+  Monaragala: 'Monaragala',
+  Mullaitivu: 'Mullaitivu',
+  'Nuwara Eliya': 'Nuwara Eliya',
+  Polonnaruwa: 'Polonnaruwa',
+  Puttalam: 'Puttalam',
+  Ratnapura: 'Ratnapura',
+  Trincomalee: 'Trincomalee',
+  Vavuniya: 'Vavuniya',
+};
 
 const sourceChannelLabels: Record<SourceChannel, string> = {
   FACEBOOK: 'Facebook',
@@ -271,6 +301,7 @@ export const strings = {
         addressLine2: 'Address line 2 (optional)',
         city: 'City (optional)',
         district: 'District (optional)',
+        chooseDistrict: 'Choose a district',
         postalCode: 'Postal code (optional)',
         isDefault: 'Use as the default address',
       },
@@ -336,4 +367,5 @@ export const strings = {
     },
   },
   sourceChannel: sourceChannelLabels,
+  district: districtLabels,
 } as const;

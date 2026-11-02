@@ -122,3 +122,28 @@ describe('addressUpdateSchema', () => {
     expect(issues(addressUpdateSchema.safeParse({}))).toEqual([['', 'Change at least one field.']]);
   });
 });
+
+describe('district (§7.11)', () => {
+  const address = { recipientName: 'Kasun', phone: '0712345678', addressLine1: '12 Temple Road' };
+  const district = (value: unknown) =>
+    addressCreateSchema.safeParse({ ...address, district: value });
+
+  it('accepts one of the 25 districts, in any capitalisation, stored with the standard spelling', () => {
+    expect(district('Kandy').data?.district).toBe('Kandy');
+    expect(district(' nuwara eliya ').data?.district).toBe('Nuwara Eliya');
+  });
+
+  it('may be left empty', () => {
+    expect(district('').data?.district).toBeNull();
+    expect(addressCreateSchema.parse(address).district).toBeUndefined();
+  });
+
+  it('refuses anything else with a plain message', () => {
+    expect(issues(district('Kandy City'))).toEqual([
+      ['district', 'Choose a district from the list.'],
+    ]);
+    expect(issues(addressUpdateSchema.safeParse({ district: 'Narnia' }))).toEqual([
+      ['district', 'Choose a district from the list.'],
+    ]);
+  });
+});

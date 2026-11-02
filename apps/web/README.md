@@ -110,7 +110,8 @@ Sign-up, log in, log out and password reset use `supabase-js` against Supabase A
 - **Addresses:** the default comes first. Each card offers Make default, Edit and Remove. The API keeps exactly one default, and the screen just shows what it returns.
 - **Archiving** a customer or an address asks first (`components/ConfirmDialog.tsx`). Focus starts on Cancel, Tab stays inside the dialog, Escape cancels, and focus returns to the button afterwards. A failed attempt shows its reason in the dialog. An archived customer is shown read-only.
 - Dates show on the business's calendar (`lib/format.ts`, from `/me`'s timezone).
-- Not here yet: the order history list (C16) and the district picker (B8). District is free text for now.
+- Not here yet: the order history list (C16).
+- **District** is a drop-down of the 25 districts (`SRI_LANKA_DISTRICTS`, labels in `strings.district`). An address saved earlier with a district outside the list still shows it as an option, so editing never clears it.
 - Tests: `customers.test.tsx` runs the real routes and API client over the fake fetch, so it checks the exact requests. In `src/test/fake-api.ts`, a handler registered for a path without a query string also answers requests with one; read `call.path` for the query.
 
 ## Products (B7)
@@ -134,3 +135,9 @@ Sign-up, log in, log out and password reset use `supabase-js` against Supabase A
   - `lib/use-list-params.ts` (`?q=&page=&archived=1` in the URL, and `listApiPath()` for the API request);
   - `features/account/use-business.ts` (business ID for cache keys, timezone, currency).
 - Tests: `products.test.tsx` and `lib/money.test.ts`.
+
+## Forms (B8)
+
+- `components/form.tsx` has `TextField`, `TextAreaField`, `SelectField` and `CheckboxField`. Each has a visible label tied to its control, and its hint and error are linked with `aria-describedby`. Build forms from these rather than bare inputs.
+- Validation messages come from the shared schemas, in plain language (`packages/shared`, `schemas/messages.test.ts`).
+- `src/app/form-labels.test.tsx` opens every form and fails if any input, drop-down or text area has no label. Add new forms to its `FORMS` list.

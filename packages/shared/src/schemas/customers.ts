@@ -1,6 +1,7 @@
 // Customers API requests (docs/DEVELOPMENT.md §6.6, §7.11, §9.2). Used by the API to validate and by
 // the web forms (B6), so both apply the same rules and messages. Strict: unknown fields are refused.
 import { z } from 'zod';
+import { SRI_LANKA_DISTRICTS, toSriLankaDistrict } from '../districts.js';
 import { PHONE_MAX_LENGTH } from '../phone.js';
 import {
   blankToNull,
@@ -28,7 +29,7 @@ const phone = optionalText(PHONE_MAX_LENGTH, `Use at most ${PHONE_MAX_LENGTH} ch
 const email = z.preprocess(
   blankToNull,
   z
-    .string()
+    .string({ error: 'Enter a valid email address, like name@example.com.' })
     .trim()
     .max(254, 'Use at most 254 characters.')
     .pipe(z.email('Enter a valid email address, like name@example.com.'))
@@ -42,41 +43,54 @@ const notes = optionalText(
   `Use at most ${CUSTOMER_NOTES_MAX_LENGTH} characters.`,
 );
 
+/**
+ * One of Sri Lanka's 25 districts (§7.11), or empty. Any capitalisation is accepted and stored with
+ * the standard spelling ("kandy" → "Kandy"); anything else is refused.
+ */
+const district = z.preprocess(
+  (value) => {
+    const blank = blankToNull(value);
+    if (typeof blank !== 'string') return blank;
+    return toSriLankaDistrict(blank) ?? blank;
+  },
+  z.enum(SRI_LANKA_DISTRICTS, { error: 'Choose a district from the list.' }).nullable().optional(),
+);
+
 /** A delivery address (§7.11): only the first line is required besides recipient and phone. */
-export const addressInputSchema = z.strictObject({
-  label: optionalText(
-    ADDRESS_SHORT_FIELD_MAX_LENGTH,
-    `Use at most ${ADDRESS_SHORT_FIELD_MAX_LENGTH} characters.`,
-  ),
-  recipientName: z
-    .string({ error: 'Enter who receives the parcel.' })
-    .trim()
-    .min(1, 'Enter who receives the parcel.')
-    .max(CUSTOMER_NAME_MAX_LENGTH, `Use at most ${CUSTOMER_NAME_MAX_LENGTH} characters.`),
-  phone: z
-    .string({ error: 'Enter a phone number for the delivery.' })
-    .trim()
-    .min(1, 'Enter a phone number for the delivery.')
-    .max(PHONE_MAX_LENGTH, `Use at most ${PHONE_MAX_LENGTH} characters.`),
-  addressLine1: z
-    .string({ error: 'Enter the address.' })
-    .trim()
-    .min(1, 'Enter the address.')
-    .max(ADDRESS_FIELD_MAX_LENGTH, `Use at most ${ADDRESS_FIELD_MAX_LENGTH} characters.`),
-  addressLine2: optionalText(
-    ADDRESS_FIELD_MAX_LENGTH,
-    `Use at most ${ADDRESS_FIELD_MAX_LENGTH} characters.`,
-  ),
-  city: optionalText(
-    ADDRESS_SHORT_FIELD_MAX_LENGTH,
-    `Use at most ${ADDRESS_SHORT_FIELD_MAX_LENGTH} characters.`,
-  ),
-  district: optionalText(
-    ADDRESS_SHORT_FIELD_MAX_LENGTH,
-    `Use at most ${ADDRESS_SHORT_FIELD_MAX_LENGTH} characters.`,
-  ),
-  postalCode: optionalText(20, 'Use at most 20 characters.'),
-});
+export const addressInputSchema = z.strictObject(
+  {
+    label: optionalText(
+      ADDRESS_SHORT_FIELD_MAX_LENGTH,
+      `Use at most ${ADDRESS_SHORT_FIELD_MAX_LENGTH} characters.`,
+    ),
+    recipientName: z
+      .string({ error: 'Enter who receives the parcel.' })
+      .trim()
+      .min(1, 'Enter who receives the parcel.')
+      .max(CUSTOMER_NAME_MAX_LENGTH, `Use at most ${CUSTOMER_NAME_MAX_LENGTH} characters.`),
+    phone: z
+      .string({ error: 'Enter a phone number for the delivery.' })
+      .trim()
+      .min(1, 'Enter a phone number for the delivery.')
+      .max(PHONE_MAX_LENGTH, `Use at most ${PHONE_MAX_LENGTH} characters.`),
+    addressLine1: z
+      .string({ error: 'Enter the address.' })
+      .trim()
+      .min(1, 'Enter the address.')
+      .max(ADDRESS_FIELD_MAX_LENGTH, `Use at most ${ADDRESS_FIELD_MAX_LENGTH} characters.`),
+    addressLine2: optionalText(
+      ADDRESS_FIELD_MAX_LENGTH,
+      `Use at most ${ADDRESS_FIELD_MAX_LENGTH} characters.`,
+    ),
+    city: optionalText(
+      ADDRESS_SHORT_FIELD_MAX_LENGTH,
+      `Use at most ${ADDRESS_SHORT_FIELD_MAX_LENGTH} characters.`,
+    ),
+    district,
+    postalCode: optionalText(20, 'Use at most 20 characters.'),
+  },
+  { error: 'Enter the delivery address details.' },
+);
 
 /** POST /customers. The optional address becomes the customer's default address. */
 export const customerCreateSchema = z.strictObject({

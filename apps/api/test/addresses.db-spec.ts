@@ -184,6 +184,33 @@ describe('POST /customers/:id/addresses', () => {
   });
 });
 
+describe('district (§7.11)', () => {
+  it('stores one of the 25 districts with its standard spelling, whatever the capitalisation', async () => {
+    const customerId = await newCustomer(tenants.a);
+    const customer = await add(tenants.a, customerId, { ...home, district: '  nuwara  ELIYA ' });
+    expect(customer.addresses[0]?.district).toBe('Nuwara Eliya');
+  });
+
+  it('refuses a district that is not on the list, on add and on edit', async () => {
+    const customerId = await newCustomer(tenants.a);
+    const refused = { fieldErrors: { district: 'Choose a district from the list.' } };
+    const added = await request(server)
+      .post(addressesOf(customerId))
+      .set(as(tenants.a))
+      .send({ ...home, district: 'Kandy City' })
+      .expect(400);
+    expect(added.body).toMatchObject(refused);
+
+    const customer = await add(tenants.a, customerId, home);
+    const edited = await request(server)
+      .patch(`${addressesOf(customerId)}/${idOf(customer, '1 Lake Road')}`)
+      .set(as(tenants.a))
+      .send({ district: 'Narnia' })
+      .expect(400);
+    expect(edited.body).toMatchObject(refused);
+  });
+});
+
 describe('PATCH /customers/:id/addresses/:addressId', () => {
   it('changes only what is sent; null or "" clears an optional field', async () => {
     const customerId = await newCustomer(tenants.a);

@@ -192,6 +192,8 @@ describe('add customer', () => {
     expect(screen.getByLabelText(f.phone)).toHaveValue('077 123 4567');
     await userEvent.type(screen.getByLabelText(f.addressLine1), '12 Temple Road');
     await userEvent.type(screen.getByLabelText(f.city), 'Kandy');
+    // District is a fixed list (§7.11).
+    await userEvent.selectOptions(screen.getByLabelText(f.district), 'Kandy');
     await userEvent.click(screen.getByRole('button', { name: s.create.submit }));
 
     expect(
@@ -209,7 +211,7 @@ describe('add customer', () => {
         addressLine1: '12 Temple Road',
         addressLine2: null,
         city: 'Kandy',
-        district: null,
+        district: 'Kandy',
         postalCode: null,
         label: null,
       },
@@ -344,6 +346,35 @@ describe('customer detail', () => {
       addressLine1: '12 Temple Road',
       isDefault: false,
     });
+  });
+
+  it('offers the 25 districts, and keeps a district saved before the list existed', async () => {
+    const { api } = setup(`/customers/${ID}`, (api) => {
+      api.on('GET', `/customers/${ID}`, () => ({
+        status: 200,
+        body: detail({ addresses: [address({ district: 'Kandy town' })] }),
+      }));
+      api.on('PATCH', `/customers/${ID}/addresses/${HOME_ID}`, () => ({
+        status: 200,
+        body: detail({ addresses: [address({ district: 'Kandy town', label: 'Main' })] }),
+      }));
+    });
+    const card = (await screen.findByRole('heading', { name: 'Home' })).closest(
+      'article',
+    ) as HTMLElement;
+    await userEvent.click(within(card).getByRole('button', { name: strings.common.edit }));
+
+    const district = screen.getByLabelText(s.addresses.fields.district);
+    expect(district).toHaveValue('Kandy town');
+    // The placeholder, the saved value, and the 25 districts.
+    expect(within(district).getAllByRole('option')).toHaveLength(27);
+
+    await userEvent.clear(screen.getByLabelText(s.addresses.fields.label));
+    await userEvent.type(screen.getByLabelText(s.addresses.fields.label), 'Main');
+    await userEvent.click(screen.getByRole('button', { name: s.addresses.submitEdit }));
+    await waitFor(() => expect(requests(api, 'PATCH')).toHaveLength(1));
+    // The district wasn't touched, so it isn't sent (and isn't cleared).
+    expect(requests(api, 'PATCH')[0]?.body).toEqual({ label: 'Main' });
   });
 
   it('edits an address, sending only what changed', async () => {

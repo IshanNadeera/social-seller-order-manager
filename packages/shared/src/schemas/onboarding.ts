@@ -14,14 +14,14 @@ export const onboardingRequestSchema = z.strictObject({
     .max(BUSINESS_NAME_MAX_LENGTH, `Use at most ${BUSINESS_NAME_MAX_LENGTH} characters.`),
   /** Optional; an empty value means "no phone". */
   contactPhone: z
-    .string()
+    .string({ error: 'Enter the phone number as text, like 077 123 4567.' })
     .trim()
     .max(CONTACT_PHONE_MAX_LENGTH, `Use at most ${CONTACT_PHONE_MAX_LENGTH} characters.`)
     .optional()
     .transform((phone) => (phone === undefined || phone === '' ? null : phone)),
   /** Optional; when missing, the API suggests one from the business name. */
   orderPrefix: z
-    .string()
+    .string({ error: 'Use 2 to 6 letters or numbers, for example NIM.' })
     .trim()
     .toUpperCase()
     .regex(ORDER_PREFIX_PATTERN, 'Use 2 to 6 letters or numbers, for example NIM.')

@@ -6,6 +6,7 @@ Code shared by the web app and the API: enums, constants, request/response types
 
 - `src/enums.ts`: order, payment, delivery and COD statuses; source channels; fulfilment types; payment methods; payment types; member roles; order event types. Each is a readonly list of codes (`ORDER_STATUSES`), a union type (`OrderStatus`) and a type guard (`isOrderStatus`). Use the list for Zod (`z.enum(ORDER_STATUSES)`) and select options.
 - `src/constants.ts`: shared limits, such as `SOURCE_NOTE_MAX_LENGTH`.
+- `src/districts.ts`: `SRI_LANKA_DISTRICTS`, the 25 districts in alphabetical order with standard spellings (§7.11), plus the `SriLankaDistrict` type, `isSriLankaDistrict()` and `toSriLankaDistrict()` (finds the standard spelling, ignoring case and spaces). Display names live in the web app's `strings.ts`.
 - Codes only. Display labels belong in `apps/web/src/lib/strings.ts`, so they can be translated.
 - The enum values must match the Prisma enums in `apps/api/prisma/schema.prisma`.
 
@@ -38,8 +39,10 @@ Vite picks up rebuilt files straight away; restart the API's dev server to load 
 - `schemas/onboarding.ts`: `onboardingRequestSchema`.
 - `schemas/customers.ts`: `customerCreateSchema` (with an optional first `address`), `customerUpdateSchema`, `customerListQuerySchema`, `addressCreateSchema` and `addressUpdateSchema`, plus their limits (`CUSTOMER_NAME_MAX_LENGTH`, `MAX_PAGE_SIZE`, `MAX_ACTIVE_ADDRESSES`, …).
   - Blank optional text becomes `null`, so clearing a form field clears the value. Emails are lower-cased.
+  - An address `district` must be one of the 25 or empty. Any capitalisation is stored with the standard spelling (`kandy` → `Kandy`); anything else gets "Choose a district from the list." The column stays text.
   - Update schemas refuse an empty body ("Change at least one field."), but only when every field is valid, so an invalid field is reported alone.
 - `schemas/products.ts`: `productCreateSchema`, `productUpdateSchema`, `productListQuerySchema`.
 - `schemas/money.ts`: `moneySchema()` for amounts sent as strings (`"1500.00"`, 0 to 99,999,999.99, at most 2 decimals; output normalised to two decimals) and `toMoneyString()`. JSON numbers are refused (§7.5).
 - `schemas/common.ts`: internal building blocks (blank → null, required/optional text, paged search query fields, "Change at least one field."). Only `DEFAULT_PAGE_SIZE`, `MAX_PAGE_SIZE` and `SEARCH_MAX_LENGTH` are exported from the package.
 - Response types are in `src/api.ts` (`Page`, `CustomerSummary`, `CustomerDetail`, `CustomerAddressView`, `ProductView`, …).
+- **Messages are written for sellers.** Every schema gives its own message for wrong types too (a number sent for a text field, a repeated `?q=`). `schemas/messages.test.ts` sends every field of every schema wrong values and fails on zod's built-in wording ("Invalid input: expected string…"). It covers new fields automatically; add new schemas to its list.

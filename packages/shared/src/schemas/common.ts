@@ -7,13 +7,19 @@ export const MAX_PAGE_SIZE = 100;
 /** Longest search text accepted by list endpoints. */
 export const SEARCH_MAX_LENGTH = 100;
 
+/** For a text field sent as something else (a number, a list). Only API callers can do this. */
+export const NOT_TEXT = 'Enter this as text.';
+
 /** "" or only spaces → null, so a cleared form field clears the value. */
 export const blankToNull = (value: unknown) =>
   typeof value === 'string' && value.trim() === '' ? null : value;
 
 /** Optional text: trimmed, blank becomes null, at most `max` characters. */
 export const optionalText = (max: number, message = `Use at most ${max} characters.`) =>
-  z.preprocess(blankToNull, z.string().trim().max(max, message).nullable().optional());
+  z.preprocess(
+    blankToNull,
+    z.string({ error: NOT_TEXT }).trim().max(max, message).nullable().optional(),
+  );
 
 /** Required text: trimmed, at least one character, at most `max`. */
 export const requiredText = (max: number, missing: string) =>
@@ -42,7 +48,8 @@ const pageNumber = z.coerce
  */
 export const searchListQueryFields = {
   q: z
-    .string()
+    // A repeated ?q=a&q=b arrives as a list.
+    .string({ error: 'Search for one piece of text.' })
     .trim()
     .max(SEARCH_MAX_LENGTH, `Use at most ${SEARCH_MAX_LENGTH} characters.`)
     .optional()

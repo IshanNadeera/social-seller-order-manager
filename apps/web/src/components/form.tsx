@@ -99,6 +99,63 @@ export function TextAreaField({
   );
 }
 
+type SelectFieldProps = ComponentPropsWithRef<'select'> & {
+  label: string;
+  hint?: string;
+  error?: string;
+  /** The options, e.g. <option value="Kandy">Kandy</option>. */
+  children: ReactNode;
+};
+
+/** A labelled drop-down, with hint and error linked like TextField's. */
+export function SelectField({
+  label,
+  hint,
+  error,
+  id,
+  className,
+  children,
+  ...select
+}: SelectFieldProps) {
+  const generatedId = useId();
+  const selectId = id ?? generatedId;
+  const hintId = `${selectId}-hint`;
+  const errorId = `${selectId}-error`;
+  const describedBy = [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(' ');
+
+  return (
+    <div className="space-y-1">
+      <label htmlFor={selectId} className="block text-sm font-medium text-slate-800">
+        {label}
+      </label>
+      <select
+        id={selectId}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy || undefined}
+        className={[
+          'block min-h-11 w-full rounded-lg border bg-white px-3 py-2.5 text-base text-slate-900',
+          'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-700',
+          error ? 'border-red-600' : 'border-slate-300',
+          className ?? '',
+        ].join(' ')}
+        {...select}
+      >
+        {children}
+      </select>
+      {hint && (
+        <p id={hintId} className="text-sm text-slate-600">
+          {hint}
+        </p>
+      )}
+      {error && (
+        <p id={errorId} className="text-sm text-red-700">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 type CheckboxFieldProps = Omit<ComponentPropsWithRef<'input'>, 'type'> & { label: string };
 
 /** A checkbox with its label to the right; the whole row is clickable (44px tall target). */

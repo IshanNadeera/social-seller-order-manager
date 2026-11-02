@@ -1,5 +1,6 @@
+import { SRI_LANKA_DISTRICTS, isSriLankaDistrict } from '@ssom/shared';
 import type { UseFormRegisterReturn } from 'react-hook-form';
-import { TextField } from '../../components/form';
+import { SelectField, TextField } from '../../components/form';
 import { strings } from '../../lib/strings';
 
 const f = strings.customers.addresses.fields;
@@ -26,11 +27,18 @@ export function AddressFields({
   field,
   errors,
   autoFocus = false,
+  savedDistrict = null,
 }: {
   field: (name: AddressFieldName) => UseFormRegisterReturn;
   errors: Partial<Record<AddressFieldName, string>>;
   autoFocus?: boolean;
+  /** The district already saved on an address being edited (it may predate the fixed list). */
+  savedDistrict?: string | null;
 }) {
+  // A district saved before the fixed list (§7.11) stays selectable, so editing never clears it.
+  const legacyDistrict =
+    savedDistrict !== null && !isSriLankaDistrict(savedDistrict) ? savedDistrict : null;
+
   return (
     <div className="space-y-4">
       <TextField
@@ -62,12 +70,15 @@ export function AddressFields({
       />
       <div className="grid gap-4 sm:grid-cols-3">
         <TextField label={f.city} autoComplete="off" error={errors.city} {...field('city')} />
-        <TextField
-          label={f.district}
-          autoComplete="off"
-          error={errors.district}
-          {...field('district')}
-        />
+        <SelectField label={f.district} error={errors.district} {...field('district')}>
+          <option value="">{f.chooseDistrict}</option>
+          {legacyDistrict !== null && <option value={legacyDistrict}>{legacyDistrict}</option>}
+          {SRI_LANKA_DISTRICTS.map((district) => (
+            <option key={district} value={district}>
+              {strings.district[district]}
+            </option>
+          ))}
+        </SelectField>
         <TextField
           label={f.postalCode}
           autoComplete="off"

@@ -125,7 +125,12 @@ export function AddressForm({
         </FormAlert>
       )}
       <form noValidate onSubmit={(event) => void onSubmit(event)} className="space-y-4">
-        <AddressFields field={(name) => form.register(name)} errors={fieldErrors} autoFocus />
+        <AddressFields
+          field={(name) => form.register(name)}
+          errors={fieldErrors}
+          autoFocus
+          savedDistrict={address?.district ?? null}
+        />
         {!editing && offerDefault && (
           <CheckboxField label={s.fields.isDefault} {...form.register('isDefault')} />
         )}
