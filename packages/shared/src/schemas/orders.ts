@@ -189,3 +189,11 @@ export const orderListQuerySchema = z
   });
 
 export type OrderListQuery = z.output<typeof orderListQuerySchema>;
+
+/** GET /orders/:id/events: oldest first, in pages (§9.8: every list is paginated). */
+export const orderEventsQuerySchema = z.strictObject({
+  page: searchListQueryFields.page,
+  pageSize: searchListQueryFields.pageSize,
+});
+
+export type OrderEventsQuery = z.output<typeof orderEventsQuerySchema>;

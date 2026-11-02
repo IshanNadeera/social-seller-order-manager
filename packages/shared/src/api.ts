@@ -4,6 +4,7 @@ import type {
   DeliveryStatus,
   FulfilmentType,
   MemberRole,
+  OrderEventType,
   OrderStatus,
   PaymentMethod,
   PaymentStatus,
@@ -180,4 +181,16 @@ export interface OrderSummary {
   deliveryStatus: DeliveryStatus | null;
   sourceChannel: SourceChannel;
   fulfilmentType: FulfilmentType;
+}
+
+/** One entry of an order's activity history (GET /orders/:id/events, §8.2 order_events). */
+export interface OrderEventView {
+  id: string;
+  type: OrderEventType;
+  /** Who did it; null for automatic changes. */
+  actor: { id: string; name: string } | null;
+  oldValue: unknown;
+  newValue: unknown;
+  reason: string | null;
+  createdAt: string;
 }

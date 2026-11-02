@@ -4,9 +4,9 @@
   "private": true,
   "description": "NestJS API for Social Seller Order Manager.",
   "scripts": {
-    "predev": "npm run build --prefix ../../packages/shared",
+    "predev": "npm run build -w @ssom/shared",
     "dev": "nest start --watch",
-    "prebuild": "npm run build --prefix ../../packages/shared",
+    "prebuild": "npm run build -w @ssom/shared",
     "build": "nest build",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json",

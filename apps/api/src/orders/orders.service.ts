@@ -10,13 +10,15 @@ import {
 import type {
   OrderCreateInput,
   OrderDetail,
+  OrderEventView,
+  OrderEventsQuery,
   OrderListQuery,
   OrderSummary,
   Page,
 } from '@ssom/shared';
 import type { AuthContext } from '../auth/auth-context';
 import { PrismaService } from '../common/prisma.service';
-import { tenantData, tenantWhere } from '../common/tenant';
+import { orNotFound, tenantData, tenantWhere } from '../common/tenant';
 import { lockActiveCustomer } from '../customers/customer-lock';
 import type { Prisma } from '../generated/prisma/client';
 import { recalculatePaymentSummary } from '../payments/payment-summary';
@@ -101,6 +103,57 @@ export class OrdersService {
         fulfilmentType: row.fulfilmentType,
       };
     });
+    return { items, page: query.page, pageSize: query.pageSize, total };
+  }
+
+  /** GET /orders/:id (§9.4): the order with items, delivery and payment summary; 404 otherwise. */
+  get(auth: AuthContext, id: string): Promise<OrderDetail> {
+    return loadOrderDetail(this.prisma, auth, id);
+  }
+
+  /** GET /orders/:id/events (§9.4): the activity history, oldest first, with who did what. */
+  async events(
+    auth: AuthContext,
+    id: string,
+    query: OrderEventsQuery,
+  ): Promise<Page<OrderEventView>> {
+    orNotFound(
+      await this.prisma.order.findFirst({ where: tenantWhere(auth, { id }), select: { id: true } }),
+    );
+    const where = tenantWhere(auth, { orderId: id });
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.orderEvent.count({ where }),
+      this.prisma.orderEvent.findMany({
+        where,
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+    ]);
+    // Only members of this business act on its orders; their names come from users.
+    const actorIds = [
+      ...new Set(rows.flatMap((row) => (row.actorUserId ? [row.actorUserId] : []))),
+    ];
+    const actors = await this.prisma.user.findMany({
+      where: {
+        id: { in: actorIds },
+        memberships: { some: { businessId: auth.businessId } },
+      },
+      select: { id: true, fullName: true, email: true },
+    });
+    const nameOf = new Map(actors.map((user) => [user.id, user.fullName ?? user.email]));
+    const items = rows.map((row): OrderEventView => ({
+      id: row.id,
+      type: row.type,
+      actor:
+        row.actorUserId === null
+          ? null
+          : { id: row.actorUserId, name: nameOf.get(row.actorUserId) ?? '' },
+      oldValue: row.oldValue,
+      newValue: row.newValue,
+      reason: row.reason,
+      createdAt: row.createdAt.toISOString(),
+    }));
     return { items, page: query.page, pageSize: query.pageSize, total };
   }
 

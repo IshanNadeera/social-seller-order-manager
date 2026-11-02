@@ -1,8 +1,10 @@
-import { Body, Controller, Get, Header, Post, Query, Res } from '@nestjs/common';
-import { orderCreateSchema, orderListQuerySchema } from '@ssom/shared';
+import { Body, Controller, Get, Header, Param, Post, Query, Res } from '@nestjs/common';
+import { orderCreateSchema, orderEventsQuerySchema, orderListQuerySchema } from '@ssom/shared';
 import type {
   OrderCreateInput,
   OrderDetail,
+  OrderEventView,
+  OrderEventsQuery,
   OrderListQuery,
   OrderSummary,
   Page,
@@ -10,6 +12,7 @@ import type {
 import type { Response } from 'express';
 import { CurrentAuth } from '../auth/auth-context';
 import type { AuthContext } from '../auth/auth-context';
+import { IdParamPipe } from '../common/id-param.pipe';
 import { ZodBodyPipe, ZodQueryPipe } from '../common/zod-body.pipe';
 import { IdempotencyKey } from '../idempotency/idempotency-key.decorator';
 import { IdempotencyService } from '../idempotency/idempotency.service';
@@ -31,6 +34,27 @@ export class OrdersController {
     @Query(new ZodQueryPipe(orderListQuerySchema)) query: OrderListQuery,
   ): Promise<Page<OrderSummary>> {
     return this.orders.list(auth, query);
+  }
+
+  /** One order with items, delivery and payment summary (§9.4). */
+  @Get(':id')
+  @Header('Cache-Control', 'no-store')
+  get(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', IdParamPipe) id: string,
+  ): Promise<OrderDetail> {
+    return this.orders.get(auth, id);
+  }
+
+  /** The order's activity history, oldest first (§9.4). */
+  @Get(':id/events')
+  @Header('Cache-Control', 'no-store')
+  events(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', IdParamPipe) id: string,
+    @Query(new ZodQueryPipe(orderEventsQuerySchema)) query: OrderEventsQuery,
+  ): Promise<Page<OrderEventView>> {
+    return this.orders.events(auth, id, query);
   }
 
   /** Creates an order in one transaction (§9.6). Needs an Idempotency-Key (§9.8). */
