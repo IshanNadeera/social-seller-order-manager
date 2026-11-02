@@ -7,6 +7,7 @@ export * from './api.js';
 export * from './order-prefix.js';
 export * from './phone.js';
 export * from './stage.js';
+export * from './transitions.js';
 // Only the limits are public; the other helpers in common.ts are internal building blocks.
 export { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, SEARCH_MAX_LENGTH } from './schemas/common.js';
 export * from './schemas/money.js';
