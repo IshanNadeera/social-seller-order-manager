@@ -191,3 +191,14 @@ describe('prisma/schema.prisma: tenant isolation', () => {
     expect(schema).not.toMatch(/onDelete:\s*SetNull/);
   });
 });
+
+describe('prisma/schema.prisma: trigram index (A23)', () => {
+  it('names the operator class without its schema, so the drift check sees no false difference', () => {
+    // Prisma reads the operator class from the database by its bare name (pg_opclass.opcname) and
+    // compares it with this text exactly (prisma-engines: postgres/indexes_query.sql, schema_differ.rs).
+    expect(schema).toMatch(
+      /@@index\(\[name\(ops: raw\("gin_trgm_ops"\)\)\], type: Gin, map: "customers_name_trgm"\)/,
+    );
+    expect(schema).not.toContain('extensions.gin_trgm_ops');
+  });
+});

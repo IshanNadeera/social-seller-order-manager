@@ -1,7 +1,8 @@
 # Continuous integration (docs/DEVELOPMENT.md §13.3). Runs on every pull request and on main.
 # Four jobs run in parallel, so one failure never hides another:
 #   checks       npm ci → lint → format check → typecheck → unit tests (no database)
-#   integration  PostgreSQL service → Supabase roles → prisma migrate deploy → database tests
+#   integration  PostgreSQL service → Supabase roles → prisma migrate deploy → RLS check →
+#                migration drift check → database tests
 #   build        web and API production builds
 #   audit        npm audit --audit-level=high
 # Actions are pinned to full commit SHAs (the tag is in the comment) so a moved tag cannot change
@@ -95,6 +96,10 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d postgres -f scripts/ci/supabase-roles.sql
       - name: Apply migrations (prisma migrate deploy)
         run: npm run db:deploy -w apps/api
+      - name: RLS on every app table, no API-role access (ADR-004)
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d postgres -f scripts/ci/check-rls.sql
+      - name: No schema change without a migration (prisma migrate diff)
+        run: npm run db:check-drift -w apps/api
       - name: Integration tests
         run: npm run test:db -w apps/api
 

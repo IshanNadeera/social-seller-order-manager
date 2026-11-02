@@ -58,18 +58,24 @@ bash scripts/check-structure.sh     # check the repository layout
 
 `.github/workflows/ci.yml` runs on every pull request and every push to `main` (§13.3). There are four jobs, run in parallel so one failure never hides another:
 
-| Job           | What it runs                                                                                                                                        |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `checks`      | `npm ci` → `npm run lint` → `npm run format:check` → `npm run typecheck` → `npm test`                                                               |
-| `integration` | PostgreSQL 17 service → `scripts/ci/supabase-roles.sql` → `npm run db:deploy -w apps/api` (`prisma migrate deploy`) → `npm run test:db -w apps/api` |
-| `build`       | `npm run build -w apps/web` and `npm run build -w apps/api`                                                                                         |
-| `audit`       | `npm audit --audit-level=high`                                                                                                                      |
+| Job           | What it runs                                                                                                                                                                                                                                            |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checks`      | `npm ci` → `npm run lint` → `npm run format:check` → `npm run typecheck` → `npm test`                                                                                                                                                                   |
+| `integration` | PostgreSQL 17 service → `scripts/ci/supabase-roles.sql` → `npm run db:deploy -w apps/api` (`prisma migrate deploy`) → **RLS gate** (`scripts/ci/check-rls.sql`) → **drift gate** (`npm run db:check-drift -w apps/api`) → `npm run test:db -w apps/api` |
+| `build`       | `npm run build -w apps/web` and `npm run build -w apps/api`                                                                                                                                                                                             |
+| `audit`       | `npm audit --audit-level=high`                                                                                                                                                                                                                          |
 
 - The integration job uses a throwaway database with fake local values only. No repository secrets are used.
 - A plain PostgreSQL lacks Supabase's `anon`, `authenticated` and `service_role` roles, so `supabase-roles.sql` creates them first. The migration then really has to lock them out of `app`, and `migration.db-spec.ts` checks it.
 - Actions are pinned to full commit SHAs, and permissions are read-only.
-- `npm run check:ci` (part of `npm test`) fails if a required step is removed, an action is unpinned, the order roles → migrate → tests changes, or secrets appear.
-- To see the integration steps locally: `npm run db:deploy -w apps/api && npm run test:db -w apps/api` against the local Supabase stack.
+- **RLS gate (A23, ADR-004):** fails, naming the tables, if any table in `app` has row-level security off. It also fails if `anon`, `authenticated` or `service_role` have any privilege on the `app` schema or its tables.
+- **Drift gate (A23):** compares the database the migrations just built with `schema.prisma` (`prisma migrate diff --from-config-datasource --to-schema … --exit-code`). If the schema changed without a migration, it fails and prints the missing SQL and the command to create the migration.
+- `npm run check:ci` (part of `npm test`) fails if any of these happens:
+  - a required step is removed;
+  - an action is unpinned;
+  - the order roles → migrate → RLS → drift → tests changes;
+  - secrets appear.
+- To run the integration steps locally against the Supabase stack: `npm run db:deploy -w apps/api && npm run db:check-drift -w apps/api && npm run test:db -w apps/api`. The RLS rules are also covered by `test/migration.db-spec.ts`.
 
 ## Ground rules
 

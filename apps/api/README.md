@@ -50,6 +50,14 @@ Migrations are forward-only and reviewed by hand (§8.3, §11.6). Prisma cannot 
 
 Never edit a migration that has been applied anywhere else; add a new one.
 
+### Checks that guard migrations (A23)
+
+- **Every schema change needs a migration.** `npm run db:check-drift -w apps/api` (`scripts/check-drift.ts`) compares the database the migrations built (`DIRECT_URL`) with `schema.prisma`. If they differ, it prints the SQL a migration is missing and exits non-zero.
+  - CI runs it right after `prisma migrate deploy`. Locally, run it after `npm run db:migrate`.
+  - Hand-written SQL (CHECKs, partial indexes, RLS, grants) is invisible to Prisma, so it never counts as drift.
+- **Every `app` table has RLS, and the API roles have no access.** `scripts/ci/check-rls.sql` (repo root) is the CI gate. A migration that adds a table must also contain `ALTER TABLE app.<table> ENABLE ROW LEVEL SECURITY;` (§8.5).
+- Give migrations a clear name: `npm run db:migrate -w apps/api -- --name add_customer_notes`.
+
 ### Demo data
 
 `npm run db:seed -w apps/api` creates or refreshes a fake demo business ("Demo Boutique", prefix `DEMO`) with an owner, customers, addresses and products (`prisma/demo-data.ts`). It is safe to run repeatedly and never resets the order counter. Everything in it is fictional: surnames are "Demo", emails use `example.test`, phones are `077 000 00xx` placeholders. Never add real customer data (§13.2).

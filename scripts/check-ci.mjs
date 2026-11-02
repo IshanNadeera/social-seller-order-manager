@@ -58,6 +58,7 @@ const required = [
   'npm test',
   'npm run db:deploy -w apps/api',
   'npm run test:db -w apps/api',
+  'npm run db:check-drift -w apps/api',
   'npm run build -w apps/web',
   'npm run build -w apps/api',
   'npm audit --audit-level=high',
@@ -74,13 +75,22 @@ check(
 const roles = code.indexOf('scripts/ci/supabase-roles.sql');
 const deploy = code.indexOf('npm run db:deploy -w apps/api');
 const dbTests = code.indexOf('npm run test:db -w apps/api');
+const rls = code.indexOf('scripts/ci/check-rls.sql');
+const drift = code.indexOf('npm run db:check-drift -w apps/api');
 check(
   roles !== -1 && existsSync('scripts/ci/supabase-roles.sql'),
   'the Supabase roles must be created (scripts/ci/supabase-roles.sql)',
 );
+// A23 (ADR-004): the RLS gate and the drift gate run on the freshly migrated database.
 check(
-  roles < deploy && deploy < dbTests,
-  'order must be: create roles → migrate deploy → database tests',
+  rls !== -1 &&
+    existsSync('scripts/ci/check-rls.sql') &&
+    /psql -v ON_ERROR_STOP=1 .*scripts\/ci\/check-rls\.sql/.test(code),
+  'the RLS gate must run scripts/ci/check-rls.sql with psql -v ON_ERROR_STOP=1',
+);
+check(
+  roles < deploy && deploy < rls && rls < drift && drift < dbTests,
+  'order must be: create roles → migrate deploy → RLS check → drift check → database tests',
 );
 
 if (errors.length) {

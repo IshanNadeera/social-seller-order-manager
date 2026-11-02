@@ -229,7 +229,11 @@ model Customer {
   @@index([businessId, name])
   // Trigram index for name search (§8.2). Created by the hand-written SQL in the initial migration
   // (pg_trgm lives in the `extensions` schema); declared here so Prisma Migrate does not drop it.
-  @@index([name(ops: raw("extensions.gin_trgm_ops"))], type: Gin, map: "customers_name_trgm")
+  // The operator class is written UNqualified on purpose: Prisma reads an index's operator class from
+  // the database by its bare name (pg_opclass.opcname, without the schema) and compares it with this
+  // text exactly. "extensions.gin_trgm_ops" therefore never matched, and every `migrate dev` / drift
+  // check wanted to drop and recreate the index (A23; the 20261101132259_sample migration was that).
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "customers_name_trgm")
   @@map("customers")
   @@schema("app")
 }

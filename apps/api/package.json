@@ -18,6 +18,7 @@
     "prisma:validate": "prisma validate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
+    "db:check-drift": "tsx scripts/check-drift.ts",
     "db:seed": "prisma db seed"
   },
   "dependencies": {
