@@ -2,7 +2,7 @@
 ## Detailed Development Specification and Implementation Blueprint
 
 **Document version:** 1.1
-**Prepared:** 29 October 2026 · **Revised:** 1 November 2026
+**Prepared:** 29 October 2026 · **Revised:** 1 November 2026 · **Amended:** 2 November 2026 (implementation decisions ADR-020 to ADR-027, see Section 21)
 **Product type:** Multi-tenant SaaS web application
 **Initial market:** Sri Lanka
 **Target customers:** All small online sellers
@@ -815,28 +815,52 @@ Never store card details.
 
 Complete core schema. Run `npx prisma validate` and review the generated SQL before the first migration.
 
-> **Prisma version:** this schema targets **Prisma 7** and was checked with Prisma's current schema validator. In Prisma 7, connection URLs are no longer written in `schema.prisma`: the CLI reads them from `prisma.config.ts`, and the app passes a driver adapter to `PrismaClient`. Pin the exact version in `package.json` at setup.
+> **Prisma version:** pinned to **Prisma 7** (7.10.1; ADR-022). In Prisma 7, connection URLs are not written in `schema.prisma`: the CLI reads them from `prisma.config.ts`, and the app passes a driver adapter to `PrismaClient`. The client is generated as CommonJS (`moduleFormat = "cjs"`), because the API runs as CommonJS.
+>
+> **Amended 2 November 2026 (ADR-023):** this is the implemented schema (`apps/api/prisma/schema.prisma`). Compared with the v1.1 draft:
+> - `@@unique([businessId, id])` is added to `order_items`, `deliveries` and `order_events` (§8.1);
+> - `deliveries.cod_payment_id` has a tenant-scoped foreign key to `payments`;
+> - enums are mapped to snake_case type names;
+> - the trigram index is declared, so Prisma Migrate keeps it. Its operator class is written without a schema prefix, because Prisma compares the bare name.
 
 ```prisma
+// Prisma schema for the API (docs/DEVELOPMENT.md §8). Prisma 7.
+// Connection URLs are not set here: the CLI reads DIRECT_URL through prisma.config.ts, and the
+// running API passes DATABASE_URL to the PrismaPg adapter (src/common/prisma.service.ts).
+//
+// Rules (enforced by test/prisma-schema.spec.ts):
+// - Every model and enum lives in the private `app` schema: @@schema("app").
+// - Every tenant table has business_id and UNIQUE (business_id, id). Links between tenant tables are
+//   composite foreign keys (business_id, x_id) -> (business_id, id), so the database itself rejects
+//   linking one business's rows to another's (§8.1, §11.1).
+// - Money is NUMERIC(12,2) (Prisma Decimal), never Float.
+// - Enum values match packages/shared/src/enums.ts.
+// CHECK constraints, partial unique indexes, the trigram index and RLS are hand-written SQL in the
+// initial migration (§8.5, task A11).
+
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  // The API is compiled to CommonJS; the default ESM client uses import.meta, which CommonJS cannot run.
+  moduleFormat = "cjs"
 }
 
 datasource db {
   provider = "postgresql"
-  schemas  = ["app"] // all application tables live in the private `app` schema
-  // Connection URLs are NOT set here in Prisma 7 — see prisma.config.ts and the PrismaPg adapter below.
+  // All application tables live in the private `app` schema, which Supabase's Data API does not expose (§8.1, §11.3).
+  schemas  = ["app"]
 }
 
-// ---------- Enums ----------
+// ---------- Enums (§7, §8.2) ----------
 
 enum MemberRole {
   OWNER
   STAFF
 
+  @@map("member_role")
   @@schema("app")
 }
+
 enum SourceChannel {
   FACEBOOK
   INSTAGRAM
@@ -847,14 +871,18 @@ enum SourceChannel {
   WEBSITE
   OTHER
 
+  @@map("source_channel")
   @@schema("app")
 }
+
 enum FulfilmentType {
   DELIVERY
   PICKUP
 
+  @@map("fulfilment_type")
   @@schema("app")
 }
+
 enum OrderStatus {
   NEW
   PENDING_CONFIRMATION
@@ -865,8 +893,10 @@ enum OrderStatus {
   CANCELLED
   RETURNED
 
+  @@map("order_status")
   @@schema("app")
 }
+
 enum PaymentStatus {
   UNPAID
   PARTIALLY_PAID
@@ -874,22 +904,28 @@ enum PaymentStatus {
   PARTIALLY_REFUNDED
   REFUNDED
 
+  @@map("payment_status")
   @@schema("app")
 }
+
 enum PaymentMethod {
   CASH
   BANK_TRANSFER
   COD
   OTHER
 
+  @@map("payment_method")
   @@schema("app")
 }
+
 enum PaymentType {
   PAYMENT
   REFUND
 
+  @@map("payment_type")
   @@schema("app")
 }
+
 enum DeliveryStatus {
   PENDING
   DISPATCHED
@@ -897,16 +933,20 @@ enum DeliveryStatus {
   FAILED
   RETURNED
 
+  @@map("delivery_status")
   @@schema("app")
 }
+
 enum CodStatus {
   NOT_APPLICABLE
   PENDING
   COLLECTED
   SETTLED
 
+  @@map("cod_status")
   @@schema("app")
 }
+
 enum OrderEventType {
   ORDER_CREATED
   ORDER_UPDATED
@@ -917,25 +957,26 @@ enum OrderEventType {
   COD_STATUS_CHANGED
   NOTE_ADDED
 
+  @@map("order_event_type")
   @@schema("app")
 }
 
 // ---------- Identity & tenancy ----------
 
+/// Mirror of the Supabase Auth user, created during onboarding. No password data (§8.2).
 model User {
-  id         String    @id @db.Uuid // = Supabase auth.users.id
-  email      String    @unique
+  id         String    @id @db.Uuid // = Supabase auth.users.id (no FK into the Supabase-managed auth schema)
+  email      String    @unique // stored lower-cased
   fullName   String?   @map("full_name")
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz
   disabledAt DateTime? @map("disabled_at") @db.Timestamptz
 
-  memberships     BusinessMember[]
-  ordersCreated   Order[]          @relation("OrderCreatedBy")
-  paymentsRecorded Payment[]       @relation("PaymentRecordedBy")
+  memberships      BusinessMember[]
+  ordersCreated    Order[]          @relation("OrderCreatedBy")
+  paymentsRecorded Payment[]        @relation("PaymentRecordedBy")
 
   @@map("users")
-
   @@schema("app")
 }
 
@@ -951,29 +992,28 @@ model Business {
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz
   archivedAt         DateTime? @map("archived_at") @db.Timestamptz
 
-  counter   BusinessCounter?
-  members   BusinessMember[]
-  customers Customer[]
-  addresses CustomerAddress[]
-  products  Product[]
-  orders    Order[]
-  items     OrderItem[]
-  payments  Payment[]
+  counter    BusinessCounter?
+  members    BusinessMember[]
+  customers  Customer[]
+  addresses  CustomerAddress[]
+  products   Product[]
+  orders     Order[]
+  items      OrderItem[]
+  payments   Payment[]
   deliveries Delivery[]
-  events    OrderEvent[]
+  events     OrderEvent[]
 
   @@map("businesses")
-
   @@schema("app")
 }
 
+/// Per-business order number sequence, incremented inside the order-creation transaction (§7.12).
 model BusinessCounter {
   businessId   String   @id @map("business_id") @db.Uuid
   nextOrderSeq Int      @default(1) @map("next_order_seq")
   business     Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
 
   @@map("business_counters")
-
   @@schema("app")
 }
 
@@ -989,7 +1029,6 @@ model BusinessMember {
   @@id([businessId, userId])
   @@index([userId])
   @@map("business_members")
-
   @@schema("app")
 }
 
@@ -1014,27 +1053,33 @@ model Customer {
   @@unique([businessId, id])
   @@index([businessId, phoneNormalized])
   @@index([businessId, name])
+  // Trigram index for name search (§8.2). Created by the hand-written SQL in the initial migration
+  // (pg_trgm lives in the `extensions` schema); declared here so Prisma Migrate does not drop it.
+  // The operator class is written UNqualified on purpose: Prisma reads an index's operator class from
+  // the database by its bare name (pg_opclass.opcname, without the schema) and compares it with this
+  // text exactly. "extensions.gin_trgm_ops" therefore never matched, and every `migrate dev` / drift
+  // check wanted to drop and recreate the index (A23; the 20261101132259_sample migration was that).
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "customers_name_trgm")
   @@map("customers")
-
   @@schema("app")
 }
 
 model CustomerAddress {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  businessId   String    @map("business_id") @db.Uuid
-  customerId   String    @map("customer_id") @db.Uuid
-  label        String?
-  recipientName String   @map("recipient_name")
-  phone        String
-  addressLine1 String    @map("address_line_1")
-  addressLine2 String?   @map("address_line_2")
-  city         String?
-  district     String?
-  postalCode   String?   @map("postal_code")
-  isDefault    Boolean   @default(false) @map("is_default")
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-  archivedAt   DateTime? @map("archived_at") @db.Timestamptz
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId    String    @map("business_id") @db.Uuid
+  customerId    String    @map("customer_id") @db.Uuid
+  label         String?
+  recipientName String    @map("recipient_name")
+  phone         String
+  addressLine1  String    @map("address_line_1")
+  addressLine2  String?   @map("address_line_2")
+  city          String?
+  district      String?
+  postalCode    String?   @map("postal_code")
+  isDefault     Boolean   @default(false) @map("is_default")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  archivedAt    DateTime? @map("archived_at") @db.Timestamptz
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
   customer Customer @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: Restrict)
@@ -1042,7 +1087,6 @@ model CustomerAddress {
   @@unique([businessId, id])
   @@index([businessId, customerId])
   @@map("customer_addresses")
-
   @@schema("app")
 }
 
@@ -1063,7 +1107,6 @@ model Product {
   @@unique([businessId, id])
   @@index([businessId, name])
   @@map("products")
-
   @@schema("app")
 }
 
@@ -1078,14 +1121,18 @@ model Order {
   sourceNote            String?        @map("source_note")
   fulfilmentType        FulfilmentType @default(DELIVERY) @map("fulfilment_type")
   orderStatus           OrderStatus    @default(NEW) @map("order_status")
+  /// How the customer is expected to pay.
   paymentMethod         PaymentMethod  @map("payment_method")
+  /// Calculated by recalculatePaymentSummary (§7.6); never set from client input.
   paymentStatus         PaymentStatus  @default(UNPAID) @map("payment_status")
   currency              String         @db.Char(3)
   subtotal              Decimal        @db.Decimal(12, 2)
   discountAmount        Decimal        @default(0) @map("discount_amount") @db.Decimal(12, 2)
   deliveryFee           Decimal        @default(0) @map("delivery_fee") @db.Decimal(12, 2)
   totalAmount           Decimal        @map("total_amount") @db.Decimal(12, 2)
+  /// Cached sum of PAYMENT records; recalculated, never incremented.
   amountPaid            Decimal        @default(0) @map("amount_paid") @db.Decimal(12, 2)
+  /// Cached sum of REFUND records; recalculated, never incremented.
   amountRefunded        Decimal        @default(0) @map("amount_refunded") @db.Decimal(12, 2)
   customerNameSnapshot  String         @map("customer_name_snapshot")
   customerPhoneSnapshot String?        @map("customer_phone_snapshot")
@@ -1097,9 +1144,9 @@ model Order {
   cancelledAt           DateTime?      @map("cancelled_at") @db.Timestamptz
   cancelReason          String?        @map("cancel_reason")
 
-  business  Business    @relation(fields: [businessId], references: [id], onDelete: Restrict)
-  customer  Customer?   @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: Restrict)
-  createdBy User        @relation("OrderCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  business  Business     @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  customer  Customer?    @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: Restrict)
+  createdBy User         @relation("OrderCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   items     OrderItem[]
   payments  Payment[]
   delivery  Delivery?
@@ -1113,10 +1160,10 @@ model Order {
   @@index([businessId, sourceChannel, createdAt(sort: Desc)])
   @@index([businessId, customerId])
   @@map("orders")
-
   @@schema("app")
 }
 
+/// Item lines with name, SKU and price snapshots. No per-line discount (§7.5, ADR-008).
 model OrderItem {
   id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   businessId          String   @map("business_id") @db.Uuid
@@ -1134,12 +1181,14 @@ model OrderItem {
   order    Order    @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Restrict)
   product  Product? @relation(fields: [businessId, productId], references: [businessId, id], onDelete: Restrict)
 
+  // §8.1: every tenant table has UNIQUE (business_id, id) (not in the §8.4 listing; added for consistency).
+  @@unique([businessId, id])
   @@index([orderId])
   @@map("order_items")
-
   @@schema("app")
 }
 
+/// Payments and refunds. Insert-only: no update or delete endpoint (§7.7).
 model Payment {
   id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   businessId        String        @map("business_id") @db.Uuid
@@ -1151,23 +1200,25 @@ model Payment {
   reference         String?
   notes             String?
   recordedById      String        @map("recorded_by") @db.Uuid
+  /// When the money changed hands; may be backdated up to 90 days (§7.7).
   occurredAt        DateTime      @map("occurred_at") @db.Timestamptz
   createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz
 
-  business   Business  @relation(fields: [businessId], references: [id], onDelete: Restrict)
-  order      Order     @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Restrict)
-  recordedBy User      @relation("PaymentRecordedBy", fields: [recordedById], references: [id], onDelete: Restrict)
-  refundOf   Payment?  @relation("RefundOf", fields: [businessId, refundOfPaymentId], references: [businessId, id], onDelete: Restrict)
-  refunds    Payment[] @relation("RefundOf")
+  business           Business   @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  order              Order      @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Restrict)
+  recordedBy         User       @relation("PaymentRecordedBy", fields: [recordedById], references: [id], onDelete: Restrict)
+  refundOf           Payment?   @relation("RefundOf", fields: [businessId, refundOfPaymentId], references: [businessId, id], onDelete: Restrict)
+  refunds            Payment[]  @relation("RefundOf")
+  settledCodDelivery Delivery?  @relation("DeliveryCodPayment")
 
   @@unique([businessId, id])
   @@index([businessId, occurredAt])
   @@index([orderId])
   @@map("payments")
-
   @@schema("app")
 }
 
+/// One row per DELIVERY order, holding the order's own copy of the address (§7.8, §8.2).
 model Delivery {
   id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   businessId      String         @map("business_id") @db.Uuid
@@ -1180,12 +1231,14 @@ model Delivery {
   city            String?
   district        String?
   postalCode      String?        @map("postal_code")
+  /// Which saved address it was copied from. Informational only: no foreign key (§8.2).
   sourceAddressId String?        @map("source_address_id") @db.Uuid
   courierName     String?        @map("courier_name")
   trackingNumber  String?        @map("tracking_number")
   codAmount       Decimal        @default(0) @map("cod_amount") @db.Decimal(12, 2)
   codStatus       CodStatus      @default(NOT_APPLICABLE) @map("cod_status")
   codSettledAt    DateTime?      @map("cod_settled_at") @db.Timestamptz
+  /// The PAYMENT created when the COD was settled (§7.8).
   codPaymentId    String?        @map("cod_payment_id") @db.Uuid
   attemptCount    Int            @default(0) @map("attempt_count") @db.SmallInt
   dispatchedAt    DateTime?      @map("dispatched_at") @db.Timestamptz
@@ -1195,21 +1248,27 @@ model Delivery {
   createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
-  order    Order    @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Restrict)
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  order      Order    @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Restrict)
+  // Not in the §8.4 listing: links the settlement payment with a tenant-scoped foreign key (§8.2 describes it).
+  codPayment Payment? @relation("DeliveryCodPayment", fields: [businessId, codPaymentId], references: [businessId, id], onDelete: Restrict)
 
+  // §8.1: every tenant table has UNIQUE (business_id, id) (not in the §8.4 listing; added for consistency).
+  @@unique([businessId, id])
   @@unique([businessId, orderId]) // required for the composite 1:1 relation
+  @@unique([businessId, codPaymentId]) // a COD payment settles at most one delivery (NULLs allowed)
   @@index([businessId, status, updatedAt(sort: Desc)])
   @@index([businessId, codStatus])
   @@map("deliveries")
-
   @@schema("app")
 }
 
+/// Activity timeline. Insert-only. Never copy phone numbers or addresses into the JSON (§8.2).
 model OrderEvent {
   id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   businessId  String         @map("business_id") @db.Uuid
   orderId     String         @map("order_id") @db.Uuid
+  /// Null for system-caused changes.
   actorUserId String?        @map("actor_user_id") @db.Uuid
   type        OrderEventType
   oldValue    Json?          @map("old_value")
@@ -1220,12 +1279,14 @@ model OrderEvent {
   business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
   order    Order    @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Restrict)
 
+  // §8.1: every tenant table has UNIQUE (business_id, id) (not in the §8.4 listing; added for consistency).
+  @@unique([businessId, id])
   @@index([orderId, createdAt])
   @@map("order_events")
-
   @@schema("app")
 }
 
+/// Stored responses for retried POST requests; rows older than 48 hours are deleted (§9.8, ADR-017).
 model IdempotencyKey {
   businessId     String   @map("business_id") @db.Uuid
   key            String
@@ -1238,79 +1299,190 @@ model IdempotencyKey {
 
   @@id([businessId, key])
   @@map("idempotency_keys")
-
   @@schema("app")
 }
 ```
 
-**`apps/api/prisma.config.ts`** — used by the Prisma CLI (migrate, studio, seed):
+**`apps/api/prisma.config.ts`**: used by the Prisma CLI (migrate, generate, validate, seed). It loads `apps/api/.env` itself and reads `DIRECT_URL` from `process.env`, so `prisma generate` and `validate` also work without a database (CI).
 
 ```ts
-import 'dotenv/config';
-import { defineConfig, env } from 'prisma/config';
+// Prisma CLI configuration (migrate, generate, validate, studio). Prisma 7. See docs/DEVELOPMENT.md §8.4, §10.4.
+// The running API does not use this file: it connects with DATABASE_URL through the PrismaPg adapter.
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { defineConfig } from 'prisma/config';
+
+// Prisma 7 does not load .env files itself. Variables already set in the environment win.
+// Run Prisma from apps/api (npm run <script> -w apps/api), like the API's own src/load-env.ts.
+const envFile = resolve(process.cwd(), '.env');
+if (existsSync(envFile)) process.loadEnvFile(envFile);
+
+// Migrations need a session-level connection (direct, or Supavisor session pooler), never the
+// transaction pooler. Commands that do not touch the database (generate, validate) must still work
+// without it, for example in CI right after `npm ci`, so a missing value is left empty here and
+// Prisma reports it only when a command actually needs the database.
+const directUrl = process.env.DIRECT_URL ?? '';
+if (directUrl !== '' && !/^postgres(ql)?:\/\//.test(directUrl)) {
+  throw new Error(
+    'DIRECT_URL must be a postgresql:// connection string (see apps/api/.env.example).',
+  );
+}
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
-  migrations: { path: 'prisma/migrations', seed: 'tsx prisma/seed.ts' },
-  datasource: { url: env('DIRECT_URL') }, // session-level connection for migrations
+  migrations: {
+    path: 'prisma/migrations',
+    // Fake demo data for local development (prisma/seed.ts). Run: npm run db:seed -w apps/api
+    seed: 'tsx prisma/seed.ts',
+  },
+  datasource: {
+    url: directUrl,
+  },
 });
 ```
 
-**`apps/api/src/common/prisma.service.ts`** — runtime client through the Supabase pooler:
+**`apps/api/src/common/prisma.service.ts`** and **`prisma-pool.ts`**: the runtime client, using the Supabase pooler (`DATABASE_URL`) with a pool of at most 5. A 5 s connection timeout means a database outage fails requests instead of hanging them.
 
 ```ts
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import type { OnModuleDestroy } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client';
+import type { Env } from './env';
+import { ENV } from './env.module';
+import { prismaPoolConfig } from './prisma-pool';
 
+/**
+ * The API's only database client (docs/DEVELOPMENT.md §8.4). Prisma 7 talks to Postgres through the
+ * node-postgres driver adapter, using DATABASE_URL (the Supabase pooler) and a pool of at most 5.
+ * Connections open lazily on the first query, so the API can start while the database is down;
+ * the health check (A15) reports it.
+ */
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleDestroy {
-  constructor() {
-    super({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL, max: 5 }) });
+  constructor(@Inject(ENV) env: Env) {
+    super({ adapter: new PrismaPg(prismaPoolConfig(env)) });
   }
-  async onModuleDestroy() {
+
+  async onModuleDestroy(): Promise<void> {
     await this.$disconnect();
   }
 }
 ```
 
-Check these two snippets against the Prisma + Supabase guide for the pinned Prisma version before first use.
+```ts
+import type { Env } from './env';
+
+/**
+ * Largest number of database connections the API opens (docs/DEVELOPMENT.md §8.4, §10.4).
+ * Kept small so the API stays within the Supabase plan's connection limits.
+ */
+export const PRISMA_POOL_MAX = 5;
+
+/**
+ * How long a request waits for a free or new connection before failing. node-postgres waits
+ * forever by default, so without this a database outage would hang requests instead of failing them.
+ */
+export const PRISMA_CONNECTION_TIMEOUT_MS = 5_000;
+
+/** Connection pool settings passed to the PrismaPg adapter (node-postgres pool options). */
+export function prismaPoolConfig(env: Pick<Env, 'DATABASE_URL'>): {
+  connectionString: string;
+  max: number;
+  connectionTimeoutMillis: number;
+} {
+  return {
+    connectionString: env.DATABASE_URL,
+    max: PRISMA_POOL_MAX,
+    connectionTimeoutMillis: PRISMA_CONNECTION_TIMEOUT_MS,
+  };
+}
+```
 
 ### 8.5 Hand-written migration SQL
 
-Add these to the initial migration (after Prisma's generated SQL) and keep them in source control:
+The initial migration (`apps/api/prisma/migrations/20261101072653_init/migration.sql`) ends with this hand-written SQL, after Prisma's generated SQL.
+
+**Amended 2 November 2026 (ADR-023, owner-approved).** Beyond the v1.1 draft it adds:
+- `pg_trgm` in the `extensions` schema (Supabase's convention);
+- CHECKs for line and order total arithmetic, walk-in → pickup, COD → delivery only, the source note ≤ 100 characters, lower-case user emails, counter ≥ 1, default delivery fee ≥ 0 and attempts ≥ 0;
+- the REVOKE also covers `service_role` and default privileges, and runs only for roles that exist, so the same migration runs on a plain PostgreSQL in CI.
 
 ```sql
--- Extensions
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
+-- =====================================================================================
+-- Hand-written SQL (docs/DEVELOPMENT.md §8.3, §8.5, ADR-004). Not generated by Prisma: review
+-- any change by hand. Everything above this line was generated from prisma/schema.prisma.
+-- =====================================================================================
 
--- CHECK constraints
+-- ---------- Extensions ----------
+-- Supabase keeps extensions in the `extensions` schema (the Security Advisor flags them in public).
+-- Created here if missing so the same migration runs on a plain Postgres (CI, shadow database).
+CREATE SCHEMA IF NOT EXISTS extensions;
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions;
+
+-- ---------- CHECK constraints (§8.2, §8.5) ----------
 ALTER TABLE app.businesses   ADD CONSTRAINT businesses_prefix_chk   CHECK (order_prefix ~ '^[A-Z0-9]{2,6}$');
+ALTER TABLE app.businesses   ADD CONSTRAINT businesses_fee_chk      CHECK (default_delivery_fee >= 0);
+ALTER TABLE app.business_counters ADD CONSTRAINT counters_seq_chk   CHECK (next_order_seq >= 1);
+ALTER TABLE app.users        ADD CONSTRAINT users_email_lower_chk   CHECK (email = lower(email));
 ALTER TABLE app.products     ADD CONSTRAINT products_price_chk      CHECK (selling_price >= 0);
 ALTER TABLE app.order_items  ADD CONSTRAINT items_qty_chk           CHECK (quantity BETWEEN 1 AND 9999);
 ALTER TABLE app.order_items  ADD CONSTRAINT items_price_chk         CHECK (unit_price >= 0 AND line_total >= 0);
+-- §7.5: line_total = quantity × unit_price (exact: an integer times a 2-decimal amount).
+ALTER TABLE app.order_items  ADD CONSTRAINT items_line_total_chk    CHECK (line_total = quantity * unit_price);
 ALTER TABLE app.orders       ADD CONSTRAINT orders_discount_chk     CHECK (discount_amount >= 0 AND discount_amount <= subtotal);
 ALTER TABLE app.orders       ADD CONSTRAINT orders_amounts_chk      CHECK (delivery_fee >= 0 AND total_amount >= 0);
-ALTER TABLE app.orders       ADD CONSTRAINT orders_paid_chk         CHECK (amount_paid >= amount_refunded);
+-- §7.5: total_amount = subtotal − discount_amount + delivery_fee.
+ALTER TABLE app.orders       ADD CONSTRAINT orders_total_chk        CHECK (total_amount = subtotal - discount_amount + delivery_fee);
+ALTER TABLE app.orders       ADD CONSTRAINT orders_paid_chk         CHECK (amount_refunded >= 0 AND amount_paid >= amount_refunded);
 ALTER TABLE app.orders       ADD CONSTRAINT orders_customer_chk     CHECK (customer_id IS NOT NULL OR source_channel = 'WALK_IN');
+-- §7.10: an anonymous walk-in sale must be a pickup.
+ALTER TABLE app.orders       ADD CONSTRAINT orders_walk_in_chk      CHECK (customer_id IS NOT NULL OR fulfilment_type = 'PICKUP');
+-- §7.8: cash on delivery only for delivery orders.
+ALTER TABLE app.orders       ADD CONSTRAINT orders_cod_delivery_chk CHECK (payment_method <> 'COD' OR fulfilment_type = 'DELIVERY');
 ALTER TABLE app.orders       ADD CONSTRAINT orders_other_note_chk   CHECK (source_channel <> 'OTHER' OR source_note IS NOT NULL);
+-- §7.9: source note at most 100 characters.
+ALTER TABLE app.orders       ADD CONSTRAINT orders_note_len_chk     CHECK (source_note IS NULL OR char_length(source_note) <= 100);
 ALTER TABLE app.payments     ADD CONSTRAINT payments_amount_chk     CHECK (amount > 0);
 ALTER TABLE app.payments     ADD CONSTRAINT payments_refund_of_chk  CHECK (refund_of_payment_id IS NULL OR type = 'REFUND');
 ALTER TABLE app.deliveries   ADD CONSTRAINT deliveries_cod_chk      CHECK (cod_amount >= 0);
+ALTER TABLE app.deliveries   ADD CONSTRAINT deliveries_attempts_chk CHECK (attempt_count >= 0);
 
--- Partial unique indexes
-CREATE UNIQUE INDEX business_one_owner      ON app.business_members (business_id) WHERE role = 'OWNER';
-CREATE UNIQUE INDEX products_sku_unique     ON app.products (business_id, sku) WHERE sku IS NOT NULL AND archived_at IS NULL;
-CREATE UNIQUE INDEX address_one_default     ON app.customer_addresses (customer_id) WHERE is_default AND archived_at IS NULL;
+-- ---------- Partial unique indexes (§8.2, §8.5) ----------
+-- One OWNER per business in the MVP.
+CREATE UNIQUE INDEX business_one_owner  ON app.business_members (business_id) WHERE role = 'OWNER';
+-- SKU unique among a business's active products; archived products keep theirs.
+CREATE UNIQUE INDEX products_sku_unique ON app.products (business_id, sku) WHERE sku IS NOT NULL AND archived_at IS NULL;
+-- One active default address per customer.
+CREATE UNIQUE INDEX address_one_default ON app.customer_addresses (customer_id) WHERE is_default AND archived_at IS NULL;
 
--- Search
-CREATE INDEX customers_name_trgm ON app.customers USING gin (name gin_trgm_ops);
+-- ---------- Search (§8.2) ----------
+CREATE INDEX customers_name_trgm ON app.customers USING gin (name extensions.gin_trgm_ops);
 
--- Lock the schema away from Supabase's public API roles (defence in depth)
-REVOKE ALL ON SCHEMA app FROM anon, authenticated;
-REVOKE ALL ON ALL TABLES IN SCHEMA app FROM anon, authenticated;
--- Enable RLS on every app table with NO policies: anon/authenticated get nothing.
--- The API connects as the table owner (the role that ran migrations), which bypasses RLS.
+-- ---------- Lock the schema away from Supabase's API roles (§11.3, ADR-004) ----------
+-- The API connects as the table owner (the role that runs migrations), which bypasses RLS.
+-- anon / authenticated (and service_role, which this app never uses) get nothing. The roles exist
+-- on Supabase; on a plain Postgres without them this block skips them (CI creates them first).
+REVOKE ALL ON SCHEMA app FROM PUBLIC;
+DO $$
+DECLARE r text;
+BEGIN
+  FOREACH r IN ARRAY ARRAY['anon', 'authenticated', 'service_role'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+      EXECUTE format('REVOKE ALL ON SCHEMA app FROM %I', r);
+      EXECUTE format('REVOKE ALL ON ALL TABLES IN SCHEMA app FROM %I', r);
+      EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA app FROM %I', r);
+      EXECUTE format('REVOKE ALL ON ALL FUNCTIONS IN SCHEMA app FROM %I', r);
+      -- Tables created in app later start without access for these roles too.
+      EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA app REVOKE ALL ON TABLES FROM %I', r);
+      EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA app REVOKE ALL ON SEQUENCES FROM %I', r);
+      EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA app REVOKE ALL ON FUNCTIONS FROM %I', r);
+    END IF;
+  END LOOP;
+END $$;
+
+-- Enable RLS on every app table with NO policies: anon / authenticated could read nothing even if
+-- granted. Re-run this block in any migration that adds a table (CI checks it, task A23).
 DO $$
 DECLARE t record;
 BEGIN
@@ -1320,7 +1492,7 @@ BEGIN
 END $$;
 ```
 
-Re-run the `ENABLE ROW LEVEL SECURITY` step in any migration that adds a table. A CI check (Section 13.3) fails if any table in `app` has RLS disabled.
+Re-run the `ENABLE ROW LEVEL SECURITY` step in any migration that adds a table. A CI check (Section 13.3, `scripts/ci/check-rls.sql`) fails if any table in `app` has RLS disabled, or if the API roles have any privilege on it. A second CI check (`npm run db:check-drift -w apps/api`) fails if `schema.prisma` changed without a migration.
 
 ---
 
@@ -1458,8 +1630,8 @@ Error shape:
 
 ### 9.8 API quality requirements
 
-- Validate bodies, path parameters, and query parameters with DTOs and NestJS `ValidationPipe` (`whitelist: true`, `forbidNonWhitelisted: true`).
-- OpenAPI/Swagger generated from DTOs; available only in non-production.
+- Validate bodies and query parameters with the **shared Zod schemas** in `packages/shared` (`ZodBodyPipe`, `ZodQueryPipe`), the same schemas the web forms use. Schemas are strict: unknown fields are refused with a field error, which is the intent of `whitelist` + `forbidNonWhitelisted`. Path IDs go through `IdParamPipe`, where a non-UUID gets the same 404 as a missing record. *(Amended 2 November 2026, ADR-024; v1.1 said class-validator DTOs with `ValidationPipe`.)*
+- OpenAPI/Swagger generated from the Zod schemas (choose a Zod-based generator before the API docs work, ADR-024); available only in non-production.
 - Rate limits (NestJS throttler): 300 requests/min per user generally; 10 exports/hour per business. Supabase Auth applies its own limits to sign-in and password reset.
 - `Idempotency-Key` (UUID from the browser) required on `POST /orders`, `POST /orders/:id/payments`, `POST /orders/:id/cod/settle`. Same key + same body returns the stored response; same key + different body returns `409`.
 - Transactions for all multi-table writes.
@@ -1483,7 +1655,7 @@ Error shape:
 - `@supabase/supabase-js` — authentication only
 
 **Backend**
-- Node.js LTS (pin the major version in `.nvmrc` and `engines`)
+- Node.js 26 LTS, pinned in `.nvmrc` and `engines` (ADR-020)
 - NestJS + TypeScript
 - Prisma ORM
 - `decimal.js` for money, `libphonenumber-js` for phones
@@ -1494,7 +1666,7 @@ Error shape:
 - Supabase: managed PostgreSQL + Supabase Auth
 
 **Testing and delivery**
-- Jest (NestJS default) or Vitest for unit tests; Supertest for API integration tests
+- Vitest for unit and integration tests, with SWC compiling the API's tests so NestJS decorator metadata works (ADR-021); Supertest for API HTTP tests
 - Playwright (end-to-end)
 - ESLint + Prettier
 - GitHub Actions
@@ -1527,6 +1699,7 @@ Backend modules: `auth` (JWT guard + membership), `users`, `businesses`, `onboar
 social-seller-order-manager/
 ├── apps/
 │   ├── web/
+│   │   ├── .env.example        # public VITE_ values only (ADR-025)
 │   │   └── src/
 │   │       ├── app/            # routes, layout, providers
 │   │       ├── components/
@@ -1540,6 +1713,7 @@ social-seller-order-manager/
 │   │       │   └── settings/
 │   │       └── lib/            # api client, supabase client, formatters
 │   └── api/
+│       ├── .env.example        # server settings (ADR-025)
 │       ├── prisma/
 │       │   ├── schema.prisma
 │       │   ├── migrations/
@@ -1571,7 +1745,6 @@ social-seller-order-manager/
 │   ├── DEPLOYMENT.md
 │   ├── RESTORE.md
 │   └── adr/
-├── .env.example
 ├── .nvmrc
 ├── package.json                # "workspaces": ["apps/*", "packages/*"]
 ├── package-lock.json
@@ -1591,7 +1764,7 @@ npm test --workspaces               # run all unit tests
 
 ### 10.4 Environment variables
 
-`.env.example` with names and safe placeholders only:
+Each app has its own `.env.example` with names and safe placeholders only (`apps/api/.env.example`, `apps/web/.env.example`; ADR-025):
 
 **API (`apps/api/.env`)**
 - `NODE_ENV`, `PORT`, `LOG_LEVEL`
@@ -2048,7 +2221,7 @@ Rank by observed frequency, impact, cost, maintenance, and willingness to pay.
 
 ## 21. Decisions (Architecture Decision Records)
 
-Each decision gets a file in `docs/adr/` with context, options, decision, reason, consequences, and date. Summary:
+Each decision has a file in `docs/adr/` (index: `docs/adr/README.md`) with status, date, context, options, decision, reason and consequences. `npm run check:adr` keeps the folder consistent. Summary:
 
 | ADR | Decision | Choice | Reason |
 |---|---|---|---|
@@ -2071,6 +2244,14 @@ Each decision gets a file in `docs/adr/` with context, options, decision, reason
 | 017 | Idempotency | Required key on order, payment, COD settlement endpoints | Weak mobile networks retry. |
 | 018 | Backups | Paid Supabase plan daily backups + nightly independent dump; RPO 24h, RTO 4h for pilot | Restorable even if the provider has an issue. |
 | 019 | Plan limits | Block new orders only; never block access to existing data | Sellers keep their records. |
+| 020 | Node.js version | **Node 26 LTS** | Longest support window; Node 24 is in maintenance. |
+| 021 | Test runner | **Vitest** everywhere (SWC for the API) | One runner across the repo; same transforms as the web build. |
+| 022 | Prisma | **Pinned to 7.x**, CommonJS client, config works without a database | Prisma 8 was a pre-release with a changed CLI. |
+| 023 | Schema refinements | Composite keys on every tenant table, extra CHECKs, unqualified trigram opclass | Database enforces §7 rules and §8.1 isolation. |
+| 024 | Request validation | **Shared Zod schemas** instead of class-validator DTOs | One set of rules for the form and the API. |
+| 025 | Environment files | **One `.env.example` per app** | Server secrets stay apart from public browser values. |
+| 026 | Membership resolution | Archived businesses ignored; oldest membership wins | Deterministic now; team access later. |
+| 027 | Auth email links | `/auth/confirm?token_hash=…` with `verifyOtp` | Links work in any browser or device. |
 
 Still open (decide before the pilot):
 - [ ] API host and web host (pick from Section 13.1 after checking current terms).

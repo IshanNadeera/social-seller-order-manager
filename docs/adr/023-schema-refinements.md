@@ -1,6 +1,6 @@
 # ADR-023: Schema and migration refinements beyond §8.4 and §8.5
 
-- Status: Accepted (A10, A23); A11 additions Proposed
+- Status: Accepted
 - Date: 2026-11-01
 - Blueprint: §8.1, §8.4, §8.5, ADR-004, ADR-009
 
@@ -21,7 +21,7 @@ Implementing §8.4 and §8.5 exposed places where the blueprint's schema did not
 2. `deliveries.cod_payment_id` has a tenant-scoped foreign key to `payments`, 1:1 via `@@unique([businessId, codPaymentId])`.
 3. Enums are mapped to snake_case PostgreSQL type names, as in §8.2.
 
-**A11 extra SQL (Proposed: awaiting the owner's explicit confirmation):**
+**A11 extra SQL (owner-approved 2 Nov 2026):**
 
 - `pg_trgm` is created in the `extensions` schema, which is Supabase's convention.
 - The REVOKE also covers `service_role` and default privileges, and runs only for roles that exist, so the migration works on plain PostgreSQL.
@@ -45,4 +45,4 @@ Every tenant-owned row is protected by composite keys, and rules from §7 are en
 
 - `test/prisma-schema.spec.ts` and `test/migration.db-spec.ts` check these rules: 35 constraint cases, RLS, grants and indexes.
 - Migration `20261101132259_sample` only recreates the trigram index. It is kept because it has already been applied. Future migrations get descriptive names.
-- §8.4 and §8.5 should be updated to match, once the A11 additions are confirmed.
+- The blueprint amendment of 2 Nov 2026 updates §8.4 and §8.5 to match.
