@@ -1,13 +1,28 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
-import { MAX_ACTIVE_ADDRESSES, WALK_IN_CUSTOMER_NAME, cents, nextCodStatus } from '@ssom/shared';
-import type { OrderCreateInput, OrderDetail } from '@ssom/shared';
+import {
+  MAX_ACTIVE_ADDRESSES,
+  WALK_IN_CUSTOMER_NAME,
+  cents,
+  maskPhone,
+  nextCodStatus,
+  orderStage,
+} from '@ssom/shared';
+import type {
+  OrderCreateInput,
+  OrderDetail,
+  OrderListQuery,
+  OrderSummary,
+  Page,
+} from '@ssom/shared';
 import type { AuthContext } from '../auth/auth-context';
+import { PrismaService } from '../common/prisma.service';
 import { tenantData, tenantWhere } from '../common/tenant';
 import { lockActiveCustomer } from '../customers/customer-lock';
 import type { Prisma } from '../generated/prisma/client';
 import { recalculatePaymentSummary } from '../payments/payment-summary';
-import { OrderCalculationError, calculateOrderTotals } from './order-calculator';
+import { OrderCalculationError, calculateBalance, calculateOrderTotals } from './order-calculator';
 import { allocateOrderNumber } from './order-number';
+import { ORDER_LIST_ORDER, orderListWhere } from './order-search';
 import { loadOrderDetail } from './order-view';
 
 type Tx = Prisma.TransactionClient;
@@ -30,6 +45,65 @@ const fromCents = (value: bigint) => `${value / 100n}.${String(value % 100n).pad
  */
 @Injectable()
 export class OrdersService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  /** GET /orders (§6.3, §9.5): filtered, searched, newest first, at most 100 per page. */
+  async list(auth: AuthContext, query: OrderListQuery): Promise<Page<OrderSummary>> {
+    const { timezone } = await this.prisma.business.findUniqueOrThrow({
+      where: { id: auth.businessId },
+      select: { timezone: true },
+    });
+    const where = orderListWhere(auth, query, timezone);
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.order.count({ where }),
+      this.prisma.order.findMany({
+        where,
+        orderBy: ORDER_LIST_ORDER,
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+        select: {
+          id: true,
+          orderNumber: true,
+          createdAt: true,
+          customerNameSnapshot: true,
+          customerPhoneSnapshot: true,
+          totalAmount: true,
+          amountPaid: true,
+          amountRefunded: true,
+          orderStatus: true,
+          paymentStatus: true,
+          sourceChannel: true,
+          fulfilmentType: true,
+          delivery: { select: { status: true } },
+        },
+      }),
+    ]);
+    const items = rows.map((row): OrderSummary => {
+      const deliveryStatus = row.delivery?.status ?? null;
+      return {
+        id: row.id,
+        orderNumber: row.orderNumber,
+        createdAt: row.createdAt.toISOString(),
+        customerName: row.customerNameSnapshot,
+        customerPhoneMasked: maskPhone(row.customerPhoneSnapshot),
+        totalAmount: row.totalAmount.toFixed(2),
+        balanceDue: calculateBalance({
+          totalAmount: row.totalAmount.toFixed(2),
+          amountPaid: row.amountPaid.toFixed(2),
+          amountRefunded: row.amountRefunded.toFixed(2),
+          closed: row.orderStatus === 'CANCELLED' || row.orderStatus === 'RETURNED',
+        }).balanceDue,
+        stage: orderStage(row.orderStatus, deliveryStatus),
+        orderStatus: row.orderStatus,
+        paymentStatus: row.paymentStatus,
+        deliveryStatus,
+        sourceChannel: row.sourceChannel,
+        fulfilmentType: row.fulfilmentType,
+      };
+    });
+    return { items, page: query.page, pageSize: query.pageSize, total };
+  }
+
   /**
    * Creates an order: §9.6 steps 1–6, all in `tx` (the controller's idempotent transaction, which is
    * step 7). Any failure rolls back everything, the order number included.

@@ -164,3 +164,20 @@ export interface OrderDetail {
   createdAt: string;
   updatedAt: string;
 }
+
+/** A row of GET /orders (§6.3). The phone is masked on the list ("077 ••• 4567"). */
+export interface OrderSummary {
+  id: string;
+  orderNumber: string;
+  createdAt: string;
+  customerName: string;
+  customerPhoneMasked: string | null;
+  totalAmount: string;
+  balanceDue: string;
+  stage: OrderStage;
+  orderStatus: OrderStatus;
+  paymentStatus: PaymentStatus;
+  deliveryStatus: DeliveryStatus | null;
+  sourceChannel: SourceChannel;
+  fulfilmentType: FulfilmentType;
+}

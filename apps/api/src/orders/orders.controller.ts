@@ -1,10 +1,16 @@
-import { Body, Controller, Header, Post, Res } from '@nestjs/common';
-import { orderCreateSchema } from '@ssom/shared';
-import type { OrderCreateInput, OrderDetail } from '@ssom/shared';
+import { Body, Controller, Get, Header, Post, Query, Res } from '@nestjs/common';
+import { orderCreateSchema, orderListQuerySchema } from '@ssom/shared';
+import type {
+  OrderCreateInput,
+  OrderDetail,
+  OrderListQuery,
+  OrderSummary,
+  Page,
+} from '@ssom/shared';
 import type { Response } from 'express';
 import { CurrentAuth } from '../auth/auth-context';
 import type { AuthContext } from '../auth/auth-context';
-import { ZodBodyPipe } from '../common/zod-body.pipe';
+import { ZodBodyPipe, ZodQueryPipe } from '../common/zod-body.pipe';
 import { IdempotencyKey } from '../idempotency/idempotency-key.decorator';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 import { OrdersService } from './orders.service';
@@ -16,6 +22,16 @@ export class OrdersController {
     private readonly orders: OrdersService,
     private readonly idempotency: IdempotencyService,
   ) {}
+
+  /** Filtered, paged list (§6.3, §9.5). */
+  @Get()
+  @Header('Cache-Control', 'no-store')
+  list(
+    @CurrentAuth() auth: AuthContext,
+    @Query(new ZodQueryPipe(orderListQuerySchema)) query: OrderListQuery,
+  ): Promise<Page<OrderSummary>> {
+    return this.orders.list(auth, query);
+  }
 
   /** Creates an order in one transaction (§9.6). Needs an Idempotency-Key (§9.8). */
   @Post()

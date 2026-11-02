@@ -1,9 +1,17 @@
 // POST /orders request (docs/DEVELOPMENT.md §6.4, §7.5–§7.10, §9.6). Strict: unknown fields, client
 // totals (subtotal, totalAmount, lineTotal…) and businessId are refused. The server calculates money.
 import { z } from 'zod';
-import { FULFILMENT_TYPES, PAYMENT_METHODS, SOURCE_CHANNELS } from '../enums.js';
+import { inclusiveDays, isIsoDate } from '../dates.js';
+import {
+  DELIVERY_STATUSES,
+  FULFILMENT_TYPES,
+  ORDER_STATUSES,
+  PAYMENT_METHODS,
+  PAYMENT_STATUSES,
+  SOURCE_CHANNELS,
+} from '../enums.js';
 import { SOURCE_NOTE_MAX_LENGTH } from '../constants.js';
-import { optionalText, requiredText } from './common.js';
+import { optionalText, requiredText, searchListQueryFields } from './common.js';
 import { addressInputSchema } from './customers.js';
 import { moneySchema } from './money.js';
 
@@ -130,3 +138,54 @@ export const orderCreateSchema = z
 
 export type OrderCreateRequest = z.input<typeof orderCreateSchema>;
 export type OrderCreateInput = z.output<typeof orderCreateSchema>;
+
+/** Longest date range a list or report may ask for (§9.5). */
+export const MAX_DATE_RANGE_DAYS = 366;
+
+const localDate = (label: string) =>
+  z
+    .string({ error: `Enter the ${label} date as YYYY-MM-DD.` })
+    .refine(isIsoDate, `Enter the ${label} date as YYYY-MM-DD, for example 2026-10-01.`)
+    .optional();
+
+/**
+ * GET /orders query string (§6.3, §9.5). `q` searches the order number, customer name and phone.
+ * `from`/`to` are dates in the business timezone, both included.
+ */
+export const orderListQuerySchema = z
+  .strictObject({
+    q: searchListQueryFields.q,
+    page: searchListQueryFields.page,
+    pageSize: searchListQueryFields.pageSize,
+    orderStatus: z
+      .enum(ORDER_STATUSES, { error: 'Choose an order status from the list.' })
+      .optional(),
+    paymentStatus: z
+      .enum(PAYMENT_STATUSES, { error: 'Choose a payment status from the list.' })
+      .optional(),
+    deliveryStatus: z
+      .enum(DELIVERY_STATUSES, { error: 'Choose a delivery status from the list.' })
+      .optional(),
+    sourceChannel: z.enum(SOURCE_CHANNELS, { error: 'Choose a source from the list.' }).optional(),
+    from: localDate('start'),
+    to: localDate('end'),
+  })
+  .superRefine((query, ctx) => {
+    if (query.from === undefined || query.to === undefined) return;
+    const days = inclusiveDays(query.from, query.to);
+    if (days < 1) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['to'],
+        message: 'The end date must be on or after the start date.',
+      });
+    } else if (days > MAX_DATE_RANGE_DAYS) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['to'],
+        message: `Choose a range of at most ${MAX_DATE_RANGE_DAYS} days.`,
+      });
+    }
+  });
+
+export type OrderListQuery = z.output<typeof orderListQuerySchema>;

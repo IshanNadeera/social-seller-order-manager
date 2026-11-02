@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { orderCreateSchema } from '../index.js';
+import { orderCreateSchema, orderListQuerySchema } from '../index.js';
 
 const CUSTOMER = '6a1f3c2e-4b5d-4e6f-8a9b-0c1d2e3f4a5b';
 const PRODUCT = '9d4c6f5b-7e80-4192-bdae-3f4a5b6c7d8e';
@@ -90,5 +90,61 @@ describe('orderCreateSchema', () => {
       'items.0.quantity': 'Enter a whole number from 1 to 9,999.',
     });
     expect(errors({ ...base, items: [] })).toMatchObject({ items: 'Add at least one item.' });
+  });
+});
+
+describe('orderListQuerySchema', () => {
+  const issues = (query: object) =>
+    Object.fromEntries(
+      (orderListQuerySchema.safeParse(query).error?.issues ?? []).map((issue) => [
+        issue.path.join('.'),
+        issue.message,
+      ]),
+    );
+
+  it('reads the §9.5 example query', () => {
+    expect(
+      orderListQuerySchema.parse({
+        page: '1',
+        pageSize: '25',
+        orderStatus: 'READY',
+        deliveryStatus: 'DISPATCHED',
+        sourceChannel: 'WHATSAPP',
+        from: '2026-10-01',
+        to: '2026-10-31',
+      }),
+    ).toEqual({
+      page: 1,
+      pageSize: 25,
+      orderStatus: 'READY',
+      deliveryStatus: 'DISPATCHED',
+      sourceChannel: 'WHATSAPP',
+      from: '2026-10-01',
+      to: '2026-10-31',
+    });
+  });
+
+  it('caps pageSize at 100 and refuses unknown filters', () => {
+    expect(issues({ pageSize: '101' })).toEqual({ pageSize: 'Use at most 100.' });
+    expect(orderListQuerySchema.safeParse({ includeArchived: 'true' }).success).toBe(false);
+  });
+
+  it('checks the dates: real dates, from ≤ to, at most 366 days', () => {
+    expect(issues({ from: '2026-02-30' })).toMatchObject({
+      from: expect.stringContaining('YYYY-MM-DD') as string,
+    });
+    expect(issues({ from: '2026-10-02', to: '2026-10-01' })).toEqual({
+      to: 'The end date must be on or after the start date.',
+    });
+    expect(issues({ from: '2024-01-01', to: '2024-12-31' })).toEqual({}); // 366 days
+    expect(issues({ from: '2025-01-01', to: '2026-01-02' })).toEqual({
+      to: 'Choose a range of at most 366 days.',
+    });
+  });
+
+  it('refuses statuses that do not exist', () => {
+    expect(issues({ orderStatus: 'SHIPPED' })).toEqual({
+      orderStatus: 'Choose an order status from the list.',
+    });
   });
 });

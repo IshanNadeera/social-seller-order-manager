@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PHONE_UNREADABLE, normalizePhone, phoneSearchDigits } from './phone.js';
+import { PHONE_UNREADABLE, maskPhone, normalizePhone, phoneSearchDigits } from './phone.js';
 
 // Fake numbers only (no real customers' data).
 const E164 = '+94771234567';
@@ -72,5 +72,22 @@ describe('phoneSearchDigits (last 9 digits, §7.11)', () => {
   it('returns null when there are too few digits to search by number', () => {
     expect(phoneSearchDigits('4567')).toBeNull();
     expect(phoneSearchDigits('Nimali')).toBeNull();
+  });
+});
+
+describe('maskPhone', () => {
+  it.each([
+    ['077 123 4567', '077 ••• 4567'],
+    ['+94 77 123 4567', '077 ••• 4567'],
+    ['0094771234567', '077 ••• 4567'],
+    ['+44 20 7946 0958', '442 ••• 0958'],
+    ['0771234567', '077 ••• 4567'],
+    ['12345', '•••'],
+  ])('%s → %s', (phone, masked) => {
+    expect(maskPhone(phone)).toBe(masked);
+  });
+
+  it('keeps no phone as none', () => {
+    expect(maskPhone(null)).toBeNull();
   });
 });

@@ -55,3 +55,18 @@ export function phoneSearchDigits(query: string): string | null {
   const digits = query.replace(/\D/g, '');
   return digits.length >= PHONE_SEARCH_DIGITS ? digits.slice(-PHONE_SEARCH_DIGITS) : null;
 }
+
+/**
+ * A phone number with the middle hidden, for lists (§6.3): "077 123 4567" → "077 ••• 4567".
+ * Shows the first 3 and last 4 digits (Sri Lankan numbers in local form); fewer than 8 digits are
+ * hidden entirely.
+ */
+export function maskPhone(phone: string | null): string | null {
+  if (phone === null) return null;
+  let digits = phone.replace(/\D/g, '');
+  // Sri Lankan numbers written with the country code read best in their local form (077…).
+  if (digits.startsWith('0094')) digits = `0${digits.slice(4)}`;
+  else if (digits.startsWith('94') && digits.length === 11) digits = `0${digits.slice(2)}`;
+  if (digits.length < 8) return '•••';
+  return `${digits.slice(0, 3)} ••• ${digits.slice(-4)}`;
+}
