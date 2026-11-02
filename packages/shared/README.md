@@ -1,11 +1,12 @@
 # packages/shared
 
-Code shared by the web app and the API: enums, constants, request/response types and Zod request schemas (display-stage labels come later). Not Prisma models. See `docs/DEVELOPMENT.md` §7 and §10.3.
+Code shared by the web app and the API: enums, constants, request/response types, Zod request schemas and the display stage. Not Prisma models. See `docs/DEVELOPMENT.md` §7 and §10.3.
 
 ## What's here
 
 - `src/enums.ts`: order, payment, delivery and COD statuses; source channels; fulfilment types; payment methods; payment types; member roles; order event types. Each is a readonly list of codes (`ORDER_STATUSES`), a union type (`OrderStatus`) and a type guard (`isOrderStatus`). Use the list for Zod (`z.enum(ORDER_STATUSES)`) and select options.
 - `src/constants.ts`: shared limits, such as `SOURCE_NOTE_MAX_LENGTH`.
+- `src/stage.ts`: `orderStage(orderStatus, deliveryStatus)` gives the display stage of §7.3 as a code (`OUT_FOR_DELIVERY`, …); `deliveryStatus` is null for pickup orders. `ORDER_STAGE_LABELS` holds the English labels for the CSV export; the web app labels stages in its `strings.ts`. Pairs the workflow can't produce fall back to the order status, so screens never break.
 - `src/districts.ts`: `SRI_LANKA_DISTRICTS`, the 25 districts in alphabetical order with standard spellings (§7.11), plus the `SriLankaDistrict` type, `isSriLankaDistrict()` and `toSriLankaDistrict()` (finds the standard spelling, ignoring case and spaces). Display names live in the web app's `strings.ts`.
 - Codes only. Display labels belong in `apps/web/src/lib/strings.ts`, so they can be translated.
 - The enum values must match the Prisma enums in `apps/api/prisma/schema.prisma`.
