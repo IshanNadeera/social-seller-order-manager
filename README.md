@@ -27,7 +27,7 @@ tests/
   e2e/              Playwright end-to-end tests
 docs/
   DEVELOPMENT.md    The blueprint
-  adr/              Architecture Decision Records
+  adr/              Architecture Decision Records (index: docs/adr/README.md)
 scripts/            Repository checks
 ```
 
@@ -76,6 +76,10 @@ bash scripts/check-structure.sh     # check the repository layout
   - the order roles → migrate → RLS → drift → tests changes;
   - secrets appear.
 - To run the integration steps locally against the Supabase stack: `npm run db:deploy -w apps/api && npm run db:check-drift -w apps/api && npm run test:db -w apps/api`. The RLS rules are also covered by `test/migration.db-spec.ts`.
+
+## Decisions
+
+Architecture decisions are recorded in [`docs/adr/`](docs/adr/README.md): ADR-001 to 019 come from the blueprint (§21), and ADR-020 onwards were made during the build. Change a decision by writing a new ADR that supersedes the old one; `npm run check:adr` keeps the folder consistent.
 
 ## Ground rules
 
