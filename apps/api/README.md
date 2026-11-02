@@ -88,6 +88,8 @@ Every tenant-owned query is scoped to the business of the verified membership. R
 - "Not found" and "another business's record" must look identical: use `orNotFound(row)` / `assertTouched(result)`, and `@Param('id', IdParamPipe)` for IDs (a non-UUID also gets the same 404).
 - The database backs this up with composite foreign keys `(business_id, …)` (§8.1).
 - Every endpoint gets cross-tenant tests with `test/tenant-isolation.ts`: `createTwoTenants()` and `expectCrossTenant404()` (same 404 body as a random ID). `test/test-auth.ts` signs test tokens.
+- **Customers, addresses and products (B5):** `test/isolation-customers-products.db-spec.ts` attacks every route that takes an ID, in both directions, with active and archived records and every mix of customer and address IDs. It checks that the other business's data is unchanged, that lists never show it, and that a `businessId` in a body or list query is rejected (400) and ignored elsewhere.
+  - Its **coverage guard** reads the routes the controllers declare and fails if one is missing from the sweep. When you add a route to these controllers (for example `GET /customers/:id/orders` in C16), add an attack for it there.
 
 ## Validation, errors and logging (§9.7, §9.8, §11.7)
 
