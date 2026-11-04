@@ -24,7 +24,28 @@ export const orderKeys = {
     ['orders', businessId, 'list', params] as const,
   detail: (businessId: string, id: string) => ['orders', businessId, 'detail', id] as const,
   events: (businessId: string, id: string) => ['orders', businessId, 'events', id] as const,
+  /** One customer's order history (§6.6). */
+  customer: (businessId: string, customerId: string) =>
+    ['orders', businessId, 'customer', customerId] as const,
 };
+
+/** Orders per page in a customer's order history. */
+export const CUSTOMER_ORDERS_PAGE_SIZE = 10;
+
+/** GET /customers/:id/orders, newest first (§9.2). */
+export function useCustomerOrders(customerId: string, page: number) {
+  const api = useApi();
+  const businessId = useBusinessId();
+  return useQuery({
+    queryKey: [...orderKeys.customer(businessId, customerId), page],
+    queryFn: ({ signal }) =>
+      api.get<Page<OrderSummary>>(
+        `/customers/${encodeURIComponent(customerId)}/orders?page=${page}&pageSize=${CUSTOMER_ORDERS_PAGE_SIZE}`,
+        { signal },
+      ),
+    placeholderData: keepPreviousData,
+  });
+}
 
 /** Activity entries per page on the order page. */
 export const EVENTS_PAGE_SIZE = 25;
@@ -65,6 +86,7 @@ export function useOrderSaved() {
     queryClient.setQueryData(orderKeys.detail(businessId, order.id), order);
     void queryClient.invalidateQueries({ queryKey: orderKeys.events(businessId, order.id) });
     void queryClient.invalidateQueries({ queryKey: [...orderKeys.all(businessId), 'list'] });
+    void queryClient.invalidateQueries({ queryKey: [...orderKeys.all(businessId), 'customer'] });
   };
 }
 

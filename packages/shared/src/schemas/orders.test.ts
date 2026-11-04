@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  customerOrdersQuerySchema,
   orderCancelSchema,
   orderCreateSchema,
   orderListQuerySchema,
@@ -233,5 +234,17 @@ describe('status change and cancel', () => {
     expect(issues(orderCancelSchema.safeParse({ reason: '   ' }))).toEqual({
       reason: 'Please give a reason.',
     });
+  });
+});
+
+describe('customerOrdersQuerySchema', () => {
+  it('pages like every list: defaults, at most 100, nothing else', () => {
+    expect(customerOrdersQuerySchema.parse({})).toEqual({ page: 1, pageSize: 25 });
+    expect(customerOrdersQuerySchema.parse({ page: '2', pageSize: '10' })).toEqual({
+      page: 2,
+      pageSize: 10,
+    });
+    expect(customerOrdersQuerySchema.safeParse({ pageSize: '101' }).success).toBe(false);
+    expect(customerOrdersQuerySchema.safeParse({ orderStatus: 'NEW' }).success).toBe(false);
   });
 });

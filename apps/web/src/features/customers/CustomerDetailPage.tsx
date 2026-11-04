@@ -12,6 +12,7 @@ import { useApi } from '../../lib/api-context';
 import { formatDate } from '../../lib/format';
 import { strings } from '../../lib/strings';
 import { AddressForm } from './AddressForm';
+import { CustomerOrders } from './CustomerOrders';
 import { useBusinessTimeZone } from '../account/use-business';
 import { useCustomer, useCustomerSaved } from './api';
 import { customerPaths } from './paths';
@@ -149,6 +150,8 @@ function CustomerView({ customer }: { customer: CustomerDetail }) {
       </dl>
 
       <Addresses customer={customer} />
+
+      <CustomerOrders customerId={customer.id} />
 
       <ConfirmDialog
         open={confirming}

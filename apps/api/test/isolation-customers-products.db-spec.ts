@@ -164,6 +164,12 @@ const attacks: Attack[] = [
       target: (victim) => victim[which],
     },
     {
+      covers: 'GET /customers/:id/orders',
+      name: `read the order history of ${which}`,
+      route: () => ({ method: 'get', path: (id) => `${C}/${id}/orders` }),
+      target: (victim) => victim[which],
+    },
+    {
       covers: 'PATCH /customers/:id',
       name: `update ${which}`,
       route: () => ({ method: 'patch', path: (id) => `${C}/${id}`, body: { name: 'Taken' } }),

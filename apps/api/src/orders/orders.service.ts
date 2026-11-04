@@ -10,6 +10,7 @@ import {
 } from '@ssom/shared';
 import type {
   CodStatus,
+  CustomerOrdersQuery,
   EditGroup,
   OrderCreateInput,
   OrderDetail,
@@ -73,7 +74,32 @@ export class OrdersService {
       where: { id: auth.businessId },
       select: { timezone: true },
     });
-    const where = orderListWhere(auth, query, timezone);
+    return this.summaries(orderListWhere(auth, query, timezone), query);
+  }
+
+  /**
+   * GET /customers/:id/orders (§9.2, §6.6): the customer's orders, newest first, as on the orders
+   * list. Archived customers keep their history; another business's customer is a 404.
+   */
+  async listForCustomer(
+    auth: AuthContext,
+    customerId: string,
+    query: CustomerOrdersQuery,
+  ): Promise<Page<OrderSummary>> {
+    orNotFound(
+      await this.prisma.customer.findFirst({
+        where: tenantWhere(auth, { id: customerId }),
+        select: { id: true },
+      }),
+    );
+    return this.summaries(tenantWhere(auth, { customerId }), query);
+  }
+
+  /** One page of order summaries (§6.3), newest first, with the total count. */
+  private async summaries(
+    where: Prisma.OrderWhereInput,
+    query: { page: number; pageSize: number },
+  ): Promise<Page<OrderSummary>> {
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.order.count({ where }),
       this.prisma.order.findMany({

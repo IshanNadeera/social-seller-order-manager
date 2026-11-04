@@ -64,6 +64,11 @@ function page(items: CustomerSummary[], overrides: Partial<Page<CustomerSummary>
 
 function setup(path: string, configure: (api: FakeApi) => void = () => {}) {
   const api = createFakeApi();
+  // The customer page also shows the order history (C16); empty unless a test says otherwise.
+  api.on('GET', `/customers/${ID}/orders`, () => ({
+    status: 200,
+    body: { items: [], page: 1, pageSize: 10, total: 0 },
+  }));
   configure(api);
   const router = renderApp(path, createFakeAuth(fakeSession()), api);
   return { api, router };
@@ -498,5 +503,73 @@ describe('edit customer', () => {
     await userEvent.click(await screen.findByRole('button', { name: s.edit.submit }));
     await waitFor(() => expect(router.state.location.pathname).toBe(`/customers/${ID}`));
     expect(requests(api, 'PATCH')).toEqual([]);
+  });
+});
+
+describe('customer order history (§6.6, §9.2)', () => {
+  const h = s.history;
+  const order = (n: number) => ({
+    id: `0f1e2d3c-4b5a-4968-8776-5a4b3c2d1e${String(n).padStart(2, '0')}`,
+    orderNumber: `NIM-00${n}`,
+    createdAt: '2026-11-01T06:00:00.000Z',
+    customerName: 'Nimali Demo',
+    customerPhoneMasked: '077 ••• 4567',
+    totalAmount: '3450.00',
+    balanceDue: '0.00',
+    stage: 'COMPLETED' as const,
+    orderStatus: 'COMPLETED' as const,
+    paymentStatus: 'PAID' as const,
+    deliveryStatus: null,
+    sourceChannel: 'WHATSAPP' as const,
+    fulfilmentType: 'PICKUP' as const,
+  });
+
+  it('lists the customer’s orders, newest first, each linking to its details, in pages', async () => {
+    const { api } = setup(`/customers/${ID}`, (api) => {
+      api.on('GET', `/customers/${ID}`, () => ({ status: 200, body: detail() }));
+      api.on('GET', `/customers/${ID}/orders`, (call) =>
+        call.path.includes('page=2')
+          ? { status: 200, body: { items: [order(31)], page: 2, pageSize: 10, total: 11 } }
+          : { status: 200, body: { items: [order(42)], page: 1, pageSize: 10, total: 11 } },
+      );
+    });
+    const history = within(await screen.findByRole('list', { name: h.listLabel }));
+    expect(history.getByRole('link', { name: 'NIM-0042' })).toHaveAttribute(
+      'href',
+      `/orders/${order(42).id}`,
+    );
+    expect(history.getByText(strings.orderStage.COMPLETED)).toBeInTheDocument();
+    expect(history.getByText(strings.paymentStatus.PAID)).toBeInTheDocument();
+    expect(history.getByText(strings.orders.list.total('LKR 3,450.00'))).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: strings.pagination.next }));
+    expect(await screen.findByRole('link', { name: 'NIM-0031' })).toBeInTheDocument();
+    expect(api.calls.map((call) => call.path)).toContain(
+      `/customers/${ID}/orders?page=2&pageSize=10`,
+    );
+  });
+
+  it('says when there are no orders yet', async () => {
+    setup(`/customers/${ID}`, (api) =>
+      api.on('GET', `/customers/${ID}`, () => ({ status: 200, body: detail() })),
+    );
+    expect(await screen.findByText(h.empty)).toBeInTheDocument();
+  });
+
+  it('explains a failure and can try again, without hiding the rest of the page', async () => {
+    let fail = true;
+    setup(`/customers/${ID}`, (api) => {
+      api.on('GET', `/customers/${ID}`, () => ({ status: 200, body: detail() }));
+      api.on('GET', `/customers/${ID}/orders`, () =>
+        fail
+          ? errorReply(400, 'VALIDATION_ERROR', 'Please check the highlighted fields.')
+          : { status: 200, body: { items: [order(42)], page: 1, pageSize: 10, total: 1 } },
+      );
+    });
+    expect(await screen.findByText(h.loadFailed)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Nimali Demo', level: 1 })).toBeInTheDocument();
+    fail = false;
+    await userEvent.click(screen.getByRole('button', { name: strings.common.retry }));
+    expect(await screen.findByRole('link', { name: 'NIM-0042' })).toBeInTheDocument();
   });
 });

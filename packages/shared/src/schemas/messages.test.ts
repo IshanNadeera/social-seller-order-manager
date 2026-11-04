@@ -9,6 +9,7 @@ import {
   addressUpdateSchema,
   customerCreateSchema,
   customerListQuerySchema,
+  customerOrdersQuerySchema,
   customerUpdateSchema,
   onboardingRequestSchema,
   orderCreateSchema,
@@ -34,6 +35,7 @@ const SCHEMAS = {
   orderUpdateSchema,
   orderStatusChangeSchema,
   orderCancelSchema,
+  customerOrdersQuerySchema,
 };
 
 /** Wrong types and sizes a client could send for any field. */

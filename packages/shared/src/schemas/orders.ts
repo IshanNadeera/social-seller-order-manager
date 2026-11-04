@@ -279,3 +279,11 @@ export const orderEventsQuerySchema = z.strictObject({
 });
 
 export type OrderEventsQuery = z.output<typeof orderEventsQuerySchema>;
+
+/** GET /customers/:id/orders (§9.2, §6.6): the customer's orders, newest first, in pages. */
+export const customerOrdersQuerySchema = z.strictObject({
+  page: searchListQueryFields.page,
+  pageSize: searchListQueryFields.pageSize,
+});
+
+export type CustomerOrdersQuery = z.output<typeof customerOrdersQuerySchema>;

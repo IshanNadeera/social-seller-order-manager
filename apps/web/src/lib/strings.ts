@@ -345,6 +345,12 @@ export const strings = {
       notFoundTitle: 'Customer not found',
       notFoundBody: 'It may have been removed, or the link may be wrong.',
     },
+    history: {
+      title: 'Order history',
+      listLabel: 'Order history',
+      loadFailed: 'We couldn’t load this customer’s orders.',
+      empty: 'No orders yet.',
+    },
     archiveDialog: {
       title: (name: string) => `Archive ${name}?`,
       body: 'They’ll be hidden from your customer list and their details can’t be changed. Their past orders are kept.',

@@ -10,28 +10,39 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { customerCreateSchema, customerListQuerySchema, customerUpdateSchema } from '@ssom/shared';
+import {
+  customerCreateSchema,
+  customerListQuerySchema,
+  customerOrdersQuerySchema,
+  customerUpdateSchema,
+} from '@ssom/shared';
 import type {
   CustomerCreateInput,
   CustomerDetail,
   CustomerListQuery,
+  CustomerOrdersQuery,
   CustomerSummary,
   CustomerUpdateInput,
+  OrderSummary,
   Page,
 } from '@ssom/shared';
 import { CurrentAuth } from '../auth/auth-context';
 import type { AuthContext } from '../auth/auth-context';
 import { IdParamPipe } from '../common/id-param.pipe';
 import { ZodBodyPipe, ZodQueryPipe } from '../common/zod-body.pipe';
+import { OrdersService } from '../orders/orders.service';
 import { CustomersService } from './customers.service';
 
 /**
- * /api/v1/customers (docs/DEVELOPMENT.md §9.2). Addresses are B3; a customer's orders are C16.
+ * /api/v1/customers (docs/DEVELOPMENT.md §9.2), and a customer's order history. Addresses are B3.
  * Responses hold personal data, so browsers and proxies are told not to store them.
  */
 @Controller('customers')
 export class CustomersController {
-  constructor(private readonly customers: CustomersService) {}
+  constructor(
+    private readonly customers: CustomersService,
+    private readonly orders: OrdersService,
+  ) {}
 
   @Get()
   @Header('Cache-Control', 'no-store')
@@ -59,6 +70,17 @@ export class CustomersController {
     @Param('id', IdParamPipe) id: string,
   ): Promise<CustomerDetail> {
     return this.customers.get(auth, id);
+  }
+
+  /** The customer's orders, newest first, in pages (§9.2, §6.6). */
+  @Get(':id/orders')
+  @Header('Cache-Control', 'no-store')
+  orderHistory(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', IdParamPipe) id: string,
+    @Query(new ZodQueryPipe(customerOrdersQuerySchema)) query: CustomerOrdersQuery,
+  ): Promise<Page<OrderSummary>> {
+    return this.orders.listForCustomer(auth, id, query);
   }
 
   @Patch(':id')
