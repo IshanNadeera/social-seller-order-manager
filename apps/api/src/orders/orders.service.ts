@@ -1,4 +1,4 @@
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   MAX_ACTIVE_ADDRESSES,
   WALK_IN_CUSTOMER_NAME,
@@ -22,32 +22,26 @@ import type {
 } from '@ssom/shared';
 import type { AuthContext } from '../auth/auth-context';
 import { PrismaService } from '../common/prisma.service';
-import { notFound, orNotFound, tenantData, tenantWhere } from '../common/tenant';
+import { orNotFound, tenantData, tenantWhere } from '../common/tenant';
 import { lockActiveCustomer } from '../customers/customer-lock';
 import type { Prisma } from '../generated/prisma/client';
 import { recalculatePaymentSummary } from '../payments/payment-summary';
 import { OrderCalculationError, calculateBalance, calculateOrderTotals } from './order-calculator';
+import { refuse } from './order-errors';
+import { lockOrder } from './order-lock';
 import { allocateOrderNumber } from './order-number';
 import { ORDER_LIST_ORDER, orderListWhere } from './order-search';
 import { loadOrderDetail } from './order-view';
 
 type Tx = Prisma.TransactionClient;
 
-/** 422 with the message on one field (§9.7 fieldErrors), or on none. */
-function refuse(code: string, message: string, field?: string): UnprocessableEntityException {
-  return new UnprocessableEntityException({
-    code,
-    message,
-    fieldErrors: field === undefined ? {} : { [field]: message },
-  });
-}
-
 /** §7.5 totals; a broken rule becomes a 422 on its field. */
 function totalsOrRefuse(input: Parameters<typeof calculateOrderTotals>[0]) {
   try {
     return calculateOrderTotals(input);
   } catch (error) {
-    if (error instanceof OrderCalculationError) throw refuse(error.code, error.message, error.field);
+    if (error instanceof OrderCalculationError)
+      throw refuse(error.code, error.message, error.field);
     throw error;
   }
 }
@@ -347,7 +341,7 @@ export class OrdersService {
    */
   update(auth: AuthContext, id: string, input: OrderUpdateInput): Promise<OrderDetail> {
     return this.prisma.$transaction(async (tx) => {
-      await this.lockOrder(tx, auth, id);
+      await lockOrder(tx, auth, id);
       const order = await tx.order.findFirstOrThrow({
         where: tenantWhere(auth, { id }),
         select: {
@@ -411,12 +405,7 @@ export class OrdersService {
           throw refuse('DELIVERY_ADDRESS_REQUIRED', 'Enter the delivery address.', 'delivery');
         }
         if (input.delivery.sourceAddressId) {
-          await this.checkSourceAddress(
-            tx,
-            auth,
-            input.delivery.sourceAddressId,
-            order.customerId,
-          );
+          await this.checkSourceAddress(tx, auth, input.delivery.sourceAddressId, order.customerId);
         }
       }
 
@@ -435,9 +424,7 @@ export class OrdersService {
         deliveryFee = money(business.defaultDeliveryFee);
       }
       const lines =
-        input.items === undefined
-          ? null
-          : await this.resolveLines(tx, auth, input.items);
+        input.items === undefined ? null : await this.resolveLines(tx, auth, input.items);
       const totals = totalsOrRefuse({
         items:
           lines ??
@@ -596,15 +583,6 @@ export class OrdersService {
 
       return loadOrderDetail(tx, auth, id);
     });
-  }
-
-  /** Locks the order row for this transaction (§7.4 edits, payments); 404 if it isn't ours. */
-  private async lockOrder(tx: Tx, auth: AuthContext, id: string): Promise<void> {
-    const rows = await tx.$queryRaw<{ id: string }[]>`
-      SELECT id FROM app.orders
-      WHERE business_id = ${auth.businessId}::uuid AND id = ${id}::uuid
-      FOR UPDATE`;
-    if (rows.length === 0) throw notFound();
   }
 
   /** An active customer of this business, locked for the transaction; 404 / 422 otherwise. */

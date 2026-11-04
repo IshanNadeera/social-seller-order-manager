@@ -10,7 +10,7 @@ import {
   PAYMENT_STATUSES,
   SOURCE_CHANNELS,
 } from '../enums.js';
-import { SOURCE_NOTE_MAX_LENGTH } from '../constants.js';
+import { SOURCE_NOTE_MAX_LENGTH, STATUS_REASON_MAX_LENGTH } from '../constants.js';
 import {
   changeAtLeastOneField,
   changesSomething,
@@ -161,17 +161,24 @@ export type OrderCreateInput = z.output<typeof orderCreateSchema>;
  */
 export const orderUpdateSchema = z
   .strictObject({
-    sourceChannel: z.enum(SOURCE_CHANNELS, { error: 'Choose where the order came from.' }).optional(),
+    sourceChannel: z
+      .enum(SOURCE_CHANNELS, { error: 'Choose where the order came from.' })
+      .optional(),
     sourceNote: optionalText(SOURCE_NOTE_MAX_LENGTH),
     fulfilmentType: z.enum(FULFILMENT_TYPES, { error: 'Choose delivery or pickup.' }).optional(),
     /** Editable with the fulfilment type, e.g. a COD order switched to pickup needs another method. */
-    paymentMethod: z.enum(PAYMENT_METHODS, { error: 'Choose how the customer will pay.' }).optional(),
+    paymentMethod: z
+      .enum(PAYMENT_METHODS, { error: 'Choose how the customer will pay.' })
+      .optional(),
     items: itemsSchema.optional(),
     discountAmount: moneySchema('Enter the discount.').optional(),
     deliveryFee: moneySchema('Enter the delivery fee.').optional(),
-    delivery: addressInputSchema.omit({ label: true }).extend({
-      sourceAddressId: uuid('Choose an address from the list.').nullable().optional(),
-    }).optional(),
+    delivery: addressInputSchema
+      .omit({ label: true })
+      .extend({
+        sourceAddressId: uuid('Choose an address from the list.').nullable().optional(),
+      })
+      .optional(),
     notes: optionalText(ORDER_NOTES_MAX_LENGTH),
   })
   .superRefine((order, ctx) => {
@@ -193,6 +200,26 @@ export const orderUpdateSchema = z
 
 export type OrderUpdateRequest = z.input<typeof orderUpdateSchema>;
 export type OrderUpdateInput = z.output<typeof orderUpdateSchema>;
+
+/**
+ * POST /orders/:id/status (§7.2, §9.4). The server checks the move with the transition validator;
+ * whether a reason is required depends on the move (cancel, return), so it is checked there too.
+ */
+export const orderStatusChangeSchema = z.strictObject({
+  to: z.enum(ORDER_STATUSES, { error: 'Choose a status from the list.' }),
+  reason: optionalText(STATUS_REASON_MAX_LENGTH),
+});
+
+export type OrderStatusChangeRequest = z.input<typeof orderStatusChangeSchema>;
+export type OrderStatusChangeInput = z.output<typeof orderStatusChangeSchema>;
+
+/** POST /orders/:id/cancel (§9.4): a reason is always required. */
+export const orderCancelSchema = z.strictObject({
+  reason: requiredText(STATUS_REASON_MAX_LENGTH, 'Please give a reason.'),
+});
+
+export type OrderCancelRequest = z.input<typeof orderCancelSchema>;
+export type OrderCancelInput = z.output<typeof orderCancelSchema>;
 
 /** Longest date range a list or report may ask for (§9.5). */
 export const MAX_DATE_RANGE_DAYS = 366;

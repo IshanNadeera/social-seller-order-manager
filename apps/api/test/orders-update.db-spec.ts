@@ -73,7 +73,10 @@ beforeAll(async () => {
     .overrideProvider(JWKS)
     .useValue(auth.jwks)
     .compile();
-  app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false, logger: false });
+  app = moduleRef.createNestApplication<NestExpressApplication>({
+    bodyParser: false,
+    logger: false,
+  });
   configureApp(app, env);
   await app.init();
   server = app.getHttpServer();
@@ -105,7 +108,10 @@ describe('PATCH /orders/:id: money', () => {
     expect(order).toMatchObject({ totalAmount: '3350.00', paymentStatus: 'PARTIALLY_PAID' });
 
     const res = await patch(order.id, {
-      items: [{ productId, quantity: 1 }, { name: 'Gift wrapping', quantity: 1, unitPrice: '200' }],
+      items: [
+        { productId, quantity: 1 },
+        { name: 'Gift wrapping', quantity: 1, unitPrice: '200' },
+      ],
     }).expect(200);
     expect(res.headers['cache-control']).toBe('no-store');
     const edited = res.body as OrderDetail;
@@ -122,8 +128,13 @@ describe('PATCH /orders/:id: money', () => {
     });
 
     // A discount that brings the total down to what was paid makes the order PAID.
-    const paid = (await patch(order.id, { discountAmount: '1050' }).expect(200)).body as OrderDetail;
-    expect(paid).toMatchObject({ totalAmount: '1000.00', balanceDue: '0.00', paymentStatus: 'PAID' });
+    const paid = (await patch(order.id, { discountAmount: '1050' }).expect(200))
+      .body as OrderDetail;
+    expect(paid).toMatchObject({
+      totalAmount: '1000.00',
+      balanceDue: '0.00',
+      paymentStatus: 'PAID',
+    });
 
     const events = await eventsOf(order.id);
     expect(events.map((event) => event.type)).toEqual([
@@ -143,10 +154,12 @@ describe('PATCH /orders/:id: money', () => {
     const body = await refused(order.id, { items: [{ productId, quantity: 1 }] });
     expect(body.code).toBe('ORDER_TOTAL_BELOW_PAID');
     expect(body.fieldErrors).toHaveProperty('items');
-    const after = (await request(server)
-      .get(`${PATH}/${order.id}`)
-      .set('Authorization', `Bearer ${tenants.a.token}`)
-      .expect(200)).body as OrderDetail;
+    const after = (
+      await request(server)
+        .get(`${PATH}/${order.id}`)
+        .set('Authorization', `Bearer ${tenants.a.token}`)
+        .expect(200)
+    ).body as OrderDetail;
     expect(after).toEqual(order);
     expect((await eventsOf(order.id)).map((event) => event.type)).not.toContain('ORDER_UPDATED');
   });
@@ -165,8 +178,9 @@ describe('PATCH /orders/:id: switching fulfilment', () => {
     const order = await createOrder({ paymentMethod: 'COD' });
     expect((await refused(order.id, { fulfilmentType: 'PICKUP' })).code).toBe('COD_NEEDS_DELIVERY');
 
-    const edited = (await patch(order.id, { fulfilmentType: 'PICKUP', paymentMethod: 'CASH' }).expect(200))
-      .body as OrderDetail;
+    const edited = (
+      await patch(order.id, { fulfilmentType: 'PICKUP', paymentMethod: 'CASH' }).expect(200)
+    ).body as OrderDetail;
     expect(edited).toMatchObject({
       fulfilmentType: 'PICKUP',
       paymentMethod: 'CASH',
@@ -179,7 +193,12 @@ describe('PATCH /orders/:id: switching fulfilment', () => {
     expect(last).toMatchObject({
       type: 'ORDER_UPDATED',
       oldValue: { fulfilmentType: 'DELIVERY', paymentMethod: 'COD', deliveryFee: '350.00' },
-      newValue: { fulfilmentType: 'PICKUP', paymentMethod: 'CASH', deliveryFee: '0.00', delivery: 'REMOVED' },
+      newValue: {
+        fulfilmentType: 'PICKUP',
+        paymentMethod: 'CASH',
+        deliveryFee: '0.00',
+        delivery: 'REMOVED',
+      },
     });
   });
 
@@ -191,7 +210,11 @@ describe('PATCH /orders/:id: switching fulfilment', () => {
     );
 
     const edited = (
-      await patch(order.id, { fulfilmentType: 'DELIVERY', paymentMethod: 'COD', delivery: ADDRESS }).expect(200)
+      await patch(order.id, {
+        fulfilmentType: 'DELIVERY',
+        paymentMethod: 'COD',
+        delivery: ADDRESS,
+      }).expect(200)
     ).body as OrderDetail;
     expect(edited).toMatchObject({ deliveryFee: '350.00', totalAmount: '3350.00' });
     expect(edited.delivery).toMatchObject({
@@ -203,7 +226,11 @@ describe('PATCH /orders/:id: switching fulfilment', () => {
     const events = await eventsOf(order.id);
     expect(events.slice(-2)).toMatchObject([
       { type: 'ORDER_UPDATED', newValue: { fulfilmentType: 'DELIVERY', delivery: 'CREATED' } },
-      { type: 'COD_STATUS_CHANGED', oldValue: { codStatus: 'NOT_APPLICABLE' }, newValue: { codStatus: 'PENDING' } },
+      {
+        type: 'COD_STATUS_CHANGED',
+        oldValue: { codStatus: 'NOT_APPLICABLE' },
+        newValue: { codStatus: 'PENDING' },
+      },
     ]);
     // No address in the history (§8.2).
     expect(JSON.stringify(events)).not.toContain('Lake Road');
@@ -216,9 +243,9 @@ describe('PATCH /orders/:id: switching fulfilment', () => {
       fulfilmentType: 'PICKUP',
       delivery: undefined,
     });
-    expect(
-      (await refused(order.id, { fulfilmentType: 'DELIVERY', delivery: ADDRESS })).code,
-    ).toBe('CUSTOMER_REQUIRED');
+    expect((await refused(order.id, { fulfilmentType: 'DELIVERY', delivery: ADDRESS })).code).toBe(
+      'CUSTOMER_REQUIRED',
+    );
   });
 
   it('the address of an existing delivery is changed elsewhere', async () => {
@@ -235,10 +262,15 @@ describe('PATCH /orders/:id: edit-lock rules (§7.4)', () => {
     await prisma.order.update({ where: { id: order.id }, data: { orderStatus: 'READY' } });
     await prisma.delivery.update({ where: { orderId: order.id }, data: { status: 'DISPATCHED' } });
 
-    expect((await refused(order.id, { discountAmount: '10' })).code).toBe('ORDER_LOCKED_AFTER_DISPATCH');
-    expect((await refused(order.id, { fulfilmentType: 'PICKUP' })).code).toBe('ORDER_LOCKED_AFTER_DISPATCH');
+    expect((await refused(order.id, { discountAmount: '10' })).code).toBe(
+      'ORDER_LOCKED_AFTER_DISPATCH',
+    );
+    expect((await refused(order.id, { fulfilmentType: 'PICKUP' })).code).toBe(
+      'ORDER_LOCKED_AFTER_DISPATCH',
+    );
     await patch(order.id, { notes: 'Call before arriving' }).expect(200);
-    const edited = (await patch(order.id, { sourceChannel: 'FACEBOOK' }).expect(200)).body as OrderDetail;
+    const edited = (await patch(order.id, { sourceChannel: 'FACEBOOK' }).expect(200))
+      .body as OrderDetail;
     expect(edited).toMatchObject({ sourceChannel: 'FACEBOOK', notes: 'Call before arriving' });
   });
 
@@ -276,7 +308,10 @@ describe('PATCH /orders/:id: requests', () => {
   it('refuses an empty edit, client totals and business IDs (400)', async () => {
     const order = await createOrder();
     await patch(order.id, {}).expect(400);
-    const res = await patch(order.id, { totalAmount: '1.00', businessId: tenants.b.businessId }).expect(400);
+    const res = await patch(order.id, {
+      totalAmount: '1.00',
+      businessId: tenants.b.businessId,
+    }).expect(400);
     expect((res.body as { fieldErrors: Record<string, string> }).fieldErrors).toEqual({
       totalAmount: 'This field is not allowed.',
       businessId: 'This field is not allowed.',

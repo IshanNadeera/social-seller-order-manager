@@ -1,16 +1,31 @@
-import { Body, Controller, Get, Header, Param, Patch, Post, Query, Res } from '@nestjs/common';
 import {
+  Body,
+  Controller,
+  Get,
+  Header,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Res,
+} from '@nestjs/common';
+import {
+  orderCancelSchema,
   orderCreateSchema,
   orderEventsQuerySchema,
   orderListQuerySchema,
+  orderStatusChangeSchema,
   orderUpdateSchema,
 } from '@ssom/shared';
 import type {
+  OrderCancelInput,
   OrderCreateInput,
   OrderDetail,
   OrderEventView,
   OrderEventsQuery,
   OrderListQuery,
+  OrderStatusChangeInput,
   OrderSummary,
   OrderUpdateInput,
   Page,
@@ -22,6 +37,7 @@ import { IdParamPipe } from '../common/id-param.pipe';
 import { ZodBodyPipe, ZodQueryPipe } from '../common/zod-body.pipe';
 import { IdempotencyKey } from '../idempotency/idempotency-key.decorator';
 import { IdempotencyService } from '../idempotency/idempotency.service';
+import { OrderStatusService } from './order-status.service';
 import { OrdersService } from './orders.service';
 
 /** /api/v1/orders (docs/DEVELOPMENT.md §9.4). Responses hold personal data: not stored by browsers. */
@@ -29,6 +45,7 @@ import { OrdersService } from './orders.service';
 export class OrdersController {
   constructor(
     private readonly orders: OrdersService,
+    private readonly statuses: OrderStatusService,
     private readonly idempotency: IdempotencyService,
   ) {}
 
@@ -91,5 +108,29 @@ export class OrdersController {
     @Body(new ZodBodyPipe(orderUpdateSchema)) input: OrderUpdateInput,
   ): Promise<OrderDetail> {
     return this.orders.update(auth, id, input);
+  }
+
+  /** Moves the order to another status, if §7.2 allows it (§9.4). */
+  @Post(':id/status')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  changeStatus(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', IdParamPipe) id: string,
+    @Body(new ZodBodyPipe(orderStatusChangeSchema)) input: OrderStatusChangeInput,
+  ): Promise<OrderDetail> {
+    return this.statuses.changeStatus(auth, id, input.to, input.reason ?? null);
+  }
+
+  /** Cancels the order; a reason is required (§9.4). */
+  @Post(':id/cancel')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  cancel(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', IdParamPipe) id: string,
+    @Body(new ZodBodyPipe(orderCancelSchema)) input: OrderCancelInput,
+  ): Promise<OrderDetail> {
+    return this.statuses.changeStatus(auth, id, 'CANCELLED', input.reason);
   }
 }

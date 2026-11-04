@@ -13,6 +13,8 @@ import {
   onboardingRequestSchema,
   orderCreateSchema,
   orderUpdateSchema,
+  orderStatusChangeSchema,
+  orderCancelSchema,
   productCreateSchema,
   productListQuerySchema,
   productUpdateSchema,
@@ -30,6 +32,8 @@ const SCHEMAS = {
   productListQuerySchema,
   orderCreateSchema,
   orderUpdateSchema,
+  orderStatusChangeSchema,
+  orderCancelSchema,
 };
 
 /** Wrong types and sizes a client could send for any field. */

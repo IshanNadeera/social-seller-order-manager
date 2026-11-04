@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { orderCreateSchema, orderListQuerySchema, orderUpdateSchema } from '../index.js';
+import {
+  orderCancelSchema,
+  orderCreateSchema,
+  orderListQuerySchema,
+  orderStatusChangeSchema,
+  orderUpdateSchema,
+} from '../index.js';
 
 const CUSTOMER = '6a1f3c2e-4b5d-4e6f-8a9b-0c1d2e3f4a5b';
 const PRODUCT = '9d4c6f5b-7e80-4192-bdae-3f4a5b6c7d8e';
@@ -152,7 +158,10 @@ describe('orderListQuerySchema', () => {
 describe('orderUpdateSchema', () => {
   const updateErrors = (body: object) =>
     Object.fromEntries(
-      (orderUpdateSchema.safeParse(body).error?.issues ?? []).map((issue) => [issue.path.join('.'), issue.message]),
+      (orderUpdateSchema.safeParse(body).error?.issues ?? []).map((issue) => [
+        issue.path.join('.'),
+        issue.message,
+      ]),
     );
 
   it('takes only what changes, and normalises money', () => {
@@ -184,10 +193,45 @@ describe('orderUpdateSchema', () => {
     expect(updateErrors({ delivery: address })).toEqual({
       delivery: 'Send the address only when switching the order to delivery.',
     });
-    expect(updateErrors({ fulfilmentType: 'PICKUP', deliveryFee: '350', paymentMethod: 'COD' })).toEqual({
+    expect(
+      updateErrors({ fulfilmentType: 'PICKUP', deliveryFee: '350', paymentMethod: 'COD' }),
+    ).toEqual({
       deliveryFee: 'A pickup order has no delivery fee.',
       paymentMethod: 'Cash on delivery is only for delivery orders.',
     });
     expect(updateErrors({ fulfilmentType: 'PICKUP', paymentMethod: 'CASH' })).toEqual({});
+  });
+});
+
+describe('status change and cancel', () => {
+  const issues = (result: { error?: { issues: { path: PropertyKey[]; message: string }[] } }) =>
+    Object.fromEntries(
+      (result.error?.issues ?? []).map((issue) => [issue.path.join('.'), issue.message]),
+    );
+
+  it('takes a status and an optional reason', () => {
+    expect(orderStatusChangeSchema.parse({ to: 'CONFIRMED' })).toMatchObject({ to: 'CONFIRMED' });
+    expect(orderStatusChangeSchema.parse({ to: 'CANCELLED', reason: '  Out of stock ' })).toEqual({
+      to: 'CANCELLED',
+      reason: 'Out of stock',
+    });
+    expect(issues(orderStatusChangeSchema.safeParse({ to: 'SHIPPED' }))).toEqual({
+      to: 'Choose a status from the list.',
+    });
+    expect(
+      issues(orderStatusChangeSchema.safeParse({ to: 'READY', reason: 'x'.repeat(501) })),
+    ).toEqual({
+      reason: 'Use at most 500 characters.',
+    });
+  });
+
+  it('cancel always needs a reason', () => {
+    expect(orderCancelSchema.parse({ reason: ' Customer asked ' })).toEqual({
+      reason: 'Customer asked',
+    });
+    expect(issues(orderCancelSchema.safeParse({}))).toEqual({ reason: 'Please give a reason.' });
+    expect(issues(orderCancelSchema.safeParse({ reason: '   ' }))).toEqual({
+      reason: 'Please give a reason.',
+    });
   });
 });
