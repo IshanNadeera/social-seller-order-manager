@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Header,
-  HttpCode,
-  Param,
-  Patch,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, Header, HttpCode, Param, Patch, Post } from '@nestjs/common';
 import {
   deliveryDeliveredSchema,
   deliveryDispatchSchema,

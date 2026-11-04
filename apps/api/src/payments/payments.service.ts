@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { cents } from '@ssom/shared';
+import { cents, nextCodStatus } from '@ssom/shared';
 import type {
+  CodSettleInput,
   CodStatus,
   Page,
   PaymentCreateInput,
@@ -232,6 +233,105 @@ export class PaymentsService {
         }),
       });
     }
+
+    return { payment: toView(payment), order: await loadOrderDetail(tx, auth, orderId) };
+  }
+
+  /**
+   * POST /orders/:id/cod/settle (§7.8, ADR-007), in `tx` (the controller's idempotent transaction).
+   * COLLECTED → SETTLED creates exactly one COD payment for the COD amount, links it to the delivery
+   * and recalculates the payment summary, all in one transaction under the order lock. A second
+   * settle finds the COD already SETTLED and is refused, so the money is never counted twice.
+   */
+  async settleCod(
+    tx: Tx,
+    auth: AuthContext,
+    orderId: string,
+    input: CodSettleInput,
+  ): Promise<PaymentRecorded> {
+    await lockOrder(tx, auth, orderId);
+    const order = await tx.order.findFirstOrThrow({
+      where: tenantWhere(auth, { id: orderId }),
+      select: { totalAmount: true, amountPaid: true, amountRefunded: true, delivery: true },
+    });
+    const { delivery } = order;
+    if (delivery === null) {
+      throw refuse(
+        'NOT_A_DELIVERY_ORDER',
+        'This is a pickup order, so it has no cash on delivery.',
+      );
+    }
+    const settled = nextCodStatus(delivery.codStatus, 'SETTLED');
+    if (settled === null) {
+      throw refuse(
+        'COD_NOT_COLLECTED',
+        delivery.codStatus === 'SETTLED'
+          ? 'This cash on delivery has already been settled.'
+          : 'Only cash on delivery that the courier has collected can be settled. Mark the order delivered first.',
+      );
+    }
+    const settledAt = input.settledAt === undefined ? new Date() : new Date(input.settledAt);
+    if (delivery.deliveredAt !== null && settledAt < delivery.deliveredAt) {
+      throw refuse(
+        'SETTLED_BEFORE_DELIVERY',
+        'The courier can’t have paid you before the parcel was delivered. Check the date.',
+        'settledAt',
+      );
+    }
+
+    // The COD amount was frozen at dispatch and checked against the balance then (§7.8); check
+    // again, so nothing can make the order overpaid.
+    const amount = cents(delivery.codAmount.toFixed(2));
+    const netPaid = cents(order.amountPaid.toFixed(2)) - cents(order.amountRefunded.toFixed(2));
+    if (amount <= 0n || netPaid + amount > cents(order.totalAmount.toFixed(2))) {
+      throw refuse(
+        'PAYMENT_EXCEEDS_BALANCE',
+        'The COD amount is more than the balance due. Record a refund or check the payments first.',
+      );
+    }
+
+    const payment = await tx.payment.create({
+      data: tenantData(auth, {
+        orderId,
+        type: 'PAYMENT' as const,
+        method: 'COD' as const,
+        amount: delivery.codAmount.toFixed(2),
+        reference: input.reference ?? null,
+        notes: input.notes ?? null,
+        recordedById: auth.userId,
+        occurredAt: settledAt,
+      }),
+      select: paymentSelect,
+    });
+    await tx.delivery.updateMany({
+      where: tenantWhere(auth, { orderId }),
+      data: { codStatus: settled, codSettledAt: settledAt, codPaymentId: payment.id },
+    });
+    await recalculatePaymentSummary(tx, auth, orderId);
+
+    const amountText = delivery.codAmount.toFixed(2);
+    await tx.orderEvent.create({
+      data: tenantData(auth, {
+        orderId,
+        actorUserId: auth.userId,
+        type: 'PAYMENT_RECORDED' as const,
+        newValue: {
+          paymentId: payment.id,
+          amount: amountText,
+          method: 'COD',
+          occurredAt: settledAt.toISOString(),
+        },
+      }),
+    });
+    await tx.orderEvent.create({
+      data: tenantData(auth, {
+        orderId,
+        actorUserId: auth.userId,
+        type: 'COD_STATUS_CHANGED' as const,
+        oldValue: { codStatus: delivery.codStatus },
+        newValue: { codStatus: settled, codAmount: amountText, paymentId: payment.id },
+      }),
+    });
 
     return { payment: toView(payment), order: await loadOrderDetail(tx, auth, orderId) };
   }

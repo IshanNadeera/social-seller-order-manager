@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { paymentCreateSchema, paymentListQuerySchema } from '../index.js';
+import { codSettleSchema, paymentCreateSchema, paymentListQuerySchema } from '../index.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 const errors = (body: object) =>
@@ -49,5 +49,21 @@ describe('paymentCreateSchema (§7.7)', () => {
   it('pages the list like every list', () => {
     expect(paymentListQuerySchema.parse({})).toEqual({ page: 1, pageSize: 25 });
     expect(paymentListQuerySchema.safeParse({ pageSize: '101' }).success).toBe(false);
+  });
+});
+
+describe('codSettleSchema (§7.8)', () => {
+  it('takes an optional settlement date (90 days back at most), reference and notes; no amount', () => {
+    expect(codSettleSchema.parse({})).toEqual({});
+    const settledAt = new Date(Date.now() - 3 * DAY).toISOString();
+    expect(codSettleSchema.parse({ settledAt, reference: 'Domex remit 7' })).toMatchObject({
+      settledAt,
+    });
+    expect(
+      codSettleSchema.safeParse({ settledAt: new Date(Date.now() - 91 * DAY).toISOString() }).error
+        ?.issues[0]?.message,
+    ).toBe('Use a date in the last 90 days.');
+    // The amount is the order's COD amount, never the client's.
+    expect(codSettleSchema.safeParse({ amount: '100.00' }).success).toBe(false);
   });
 });

@@ -83,7 +83,10 @@ beforeAll(async () => {
     .overrideProvider(JWKS)
     .useValue(testAuth.jwks)
     .compile();
-  app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false, logger: false });
+  app = moduleRef.createNestApplication<NestExpressApplication>({
+    bodyParser: false,
+    logger: false,
+  });
   configureApp(app, env);
   await app.init();
   server = app.getHttpServer();
@@ -113,16 +116,26 @@ afterAll(async () => {
 describe('dispatch → delivered (§7.2)', () => {
   it('dispatches a ready order; delivered completes it and puts the COD with the courier, in one go', async () => {
     const order = await readyOrder();
-    const sent = await done(act(order.id, 'dispatch', { courierName: 'Domex', trackingNumber: 'DX1' }));
+    const sent = await done(
+      act(order.id, 'dispatch', { courierName: 'Domex', trackingNumber: 'DX1' }),
+    );
     expect(sent).toMatchObject({ orderStatus: 'READY', stage: 'OUT_FOR_DELIVERY' });
-    expect(sent.delivery).toMatchObject({ status: 'DISPATCHED', courierName: 'Domex', codStatus: 'PENDING' });
+    expect(sent.delivery).toMatchObject({
+      status: 'DISPATCHED',
+      courierName: 'Domex',
+      codStatus: 'PENDING',
+    });
     const dispatched = await deliveryRow(order.id);
     expect(dispatched.attemptCount).toBe(1);
     expect(dispatched.dispatchedAt).toBeInstanceOf(Date);
 
     const delivered = await done(act(order.id, 'delivered'));
     expect(delivered).toMatchObject({ orderStatus: 'COMPLETED', stage: 'COMPLETED' });
-    expect(delivered.delivery).toMatchObject({ status: 'DELIVERED', codStatus: 'COLLECTED', codAmount: '1000.00' });
+    expect(delivered.delivery).toMatchObject({
+      status: 'DELIVERED',
+      codStatus: 'COLLECTED',
+      codAmount: '1000.00',
+    });
     // No payment yet: COD money is recorded when it is settled (§7.8).
     expect(delivered.amountPaid).toBe('0.00');
     const row = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
@@ -136,17 +149,33 @@ describe('dispatch → delivered (§7.2)', () => {
         newValue: { deliveryStatus: 'DISPATCHED', attemptCount: 1, courierName: 'Domex' },
       },
       { type: 'DELIVERY_STATUS_CHANGED', newValue: { deliveryStatus: 'DELIVERED' } },
-      { type: 'ORDER_STATUS_CHANGED', oldValue: { orderStatus: 'READY' }, newValue: { orderStatus: 'COMPLETED' } },
-      { type: 'COD_STATUS_CHANGED', oldValue: { codStatus: 'PENDING' }, newValue: { codStatus: 'COLLECTED' } },
+      {
+        type: 'ORDER_STATUS_CHANGED',
+        oldValue: { orderStatus: 'READY' },
+        newValue: { orderStatus: 'COMPLETED' },
+      },
+      {
+        type: 'COD_STATUS_CHANGED',
+        oldValue: { codStatus: 'PENDING' },
+        newValue: { codStatus: 'COLLECTED' },
+      },
     ]);
   });
 
   it('only a ready order can be dispatched; steps can’t be skipped or repeated', async () => {
     const order = await readyOrder({}, false);
     expect(await refused(act(order.id, 'dispatch'))).toMatchObject({ code: 'INVALID_TRANSITION' });
-    await request(server).post(`${O}/${order.id}/status`).set(auth()).send({ to: 'CONFIRMED' }).expect(200);
+    await request(server)
+      .post(`${O}/${order.id}/status`)
+      .set(auth())
+      .send({ to: 'CONFIRMED' })
+      .expect(200);
     expect((await refused(act(order.id, 'delivered'))).code).toBe('INVALID_TRANSITION');
-    await request(server).post(`${O}/${order.id}/status`).set(auth()).send({ to: 'READY' }).expect(200);
+    await request(server)
+      .post(`${O}/${order.id}/status`)
+      .set(auth())
+      .send({ to: 'READY' })
+      .expect(200);
     await done(act(order.id, 'dispatch'));
     expect((await refused(act(order.id, 'dispatch'))).code).toBe('INVALID_TRANSITION');
     expect((await deliveryRow(order.id)).status).toBe('DISPATCHED');
@@ -167,7 +196,11 @@ describe('failed attempts and returns', () => {
     await done(act(order.id, 'dispatch'));
     expect((await deliveryRow(order.id)).attemptCount).toBe(2);
     expect((await done(act(order.id, 'delivered'))).orderStatus).toBe('COMPLETED');
-    expect((await eventsOf(order.id)).find((event) => event.newValue && JSON.stringify(event.newValue).includes('FAILED'))).toMatchObject({
+    expect(
+      (await eventsOf(order.id)).find(
+        (event) => event.newValue && JSON.stringify(event.newValue).includes('FAILED'),
+      ),
+    ).toMatchObject({
       reason: 'Nobody home',
     });
   });
@@ -177,7 +210,11 @@ describe('failed attempts and returns', () => {
     await done(act(order.id, 'dispatch'));
     await done(act(order.id, 'failed', { reason: 'Wrong address' }));
     const returned = await done(act(order.id, 'returned', {}));
-    expect(returned).toMatchObject({ orderStatus: 'RETURNED', stage: 'RETURNED', balanceDue: '0.00' });
+    expect(returned).toMatchObject({
+      orderStatus: 'RETURNED',
+      stage: 'RETURNED',
+      balanceDue: '0.00',
+    });
     expect(returned.delivery).toMatchObject({ status: 'RETURNED', codStatus: 'NOT_APPLICABLE' });
     expect((await eventsOf(order.id)).slice(-3).map((event) => event.type)).toEqual([
       'DELIVERY_STATUS_CHANGED',
@@ -194,10 +231,16 @@ describe('failed attempts and returns', () => {
     await done(act(order.id, 'delivered'));
 
     expect((await refused(act(order.id, 'returned', {}))).code).toBe('REASON_REQUIRED');
-    expect((await refused(act(order.id, 'returned', { reason: 'Damaged' }, staff))).code).toBe('OWNER_ONLY');
+    expect((await refused(act(order.id, 'returned', { reason: 'Damaged' }, staff))).code).toBe(
+      'OWNER_ONLY',
+    );
 
     const returned = await done(act(order.id, 'returned', { reason: 'Damaged' }));
-    expect(returned).toMatchObject({ orderStatus: 'RETURNED', refundOwed: '300.00', balanceDue: '0.00' });
+    expect(returned).toMatchObject({
+      orderStatus: 'RETURNED',
+      refundOwed: '300.00',
+      balanceDue: '0.00',
+    });
     expect(returned.delivery).toMatchObject({ codStatus: 'NOT_APPLICABLE' });
     expect((await eventsOf(order.id)).at(-3)).toMatchObject({
       type: 'DELIVERY_STATUS_CHANGED',
@@ -211,13 +254,20 @@ describe('failed attempts and returns', () => {
     await done(act(order.id, 'dispatch'));
     const delivered = await done(act(order.id, 'delivered'));
     expect(delivered.delivery).toMatchObject({ codStatus: 'NOT_APPLICABLE' });
-    expect((await eventsOf(order.id)).map((event) => event.type)).not.toContain('COD_STATUS_CHANGED');
+    expect((await eventsOf(order.id)).map((event) => event.type)).not.toContain(
+      'COD_STATUS_CHANGED',
+    );
   });
 });
 
 describe('requests', () => {
   it('a pickup order has no delivery actions', async () => {
-    const order = await readyOrder({ fulfilmentType: 'PICKUP', paymentMethod: 'CASH', delivery: undefined, deliveryFee: undefined });
+    const order = await readyOrder({
+      fulfilmentType: 'PICKUP',
+      paymentMethod: 'CASH',
+      delivery: undefined,
+      deliveryFee: undefined,
+    });
     expect((await refused(act(order.id, 'dispatch'))).code).toBe('NOT_A_DELIVERY_ORDER');
   });
 

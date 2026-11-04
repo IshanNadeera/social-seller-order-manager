@@ -22,6 +22,26 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** A phone clock running a little ahead must not make "now" look like the future. */
 const FUTURE_LEEWAY_MS = 5 * 60 * 1000;
 
+/** §7.7: when money changed hands may be up to 90 days back, but not in the future. */
+function checkMoneyDate(
+  value: string | undefined,
+  path: PropertyKey[],
+  ctx: z.RefinementCtx,
+): void {
+  if (value === undefined) return;
+  const at = Date.parse(value);
+  const now = Date.now();
+  if (at > now + FUTURE_LEEWAY_MS) {
+    ctx.addIssue({ code: 'custom', path, message: 'This date is in the future.' });
+  } else if (at < now - PAYMENT_BACKDATE_DAYS * DAY_MS) {
+    ctx.addIssue({
+      code: 'custom',
+      path,
+      message: `Use a date in the last ${PAYMENT_BACKDATE_DAYS} days.`,
+    });
+  }
+}
+
 export const paymentCreateSchema = z
   .strictObject({
     type: z.enum(PAYMENT_TYPES, { error: 'Choose payment or refund.' }),
@@ -51,22 +71,7 @@ export const paymentCreateSchema = z
         message: 'Only a refund can point to a payment.',
       });
     }
-    if (input.occurredAt === undefined) return;
-    const at = Date.parse(input.occurredAt);
-    const now = Date.now();
-    if (at > now + FUTURE_LEEWAY_MS) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['occurredAt'],
-        message: 'This date is in the future.',
-      });
-    } else if (at < now - PAYMENT_BACKDATE_DAYS * DAY_MS) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['occurredAt'],
-        message: `Use a date in the last ${PAYMENT_BACKDATE_DAYS} days.`,
-      });
-    }
+    checkMoneyDate(input.occurredAt, ['occurredAt'], ctx);
   });
 
 export type PaymentCreateRequest = z.input<typeof paymentCreateSchema>;
@@ -79,3 +84,20 @@ export const paymentListQuerySchema = z.strictObject({
 });
 
 export type PaymentListQuery = z.output<typeof paymentListQuerySchema>;
+
+/**
+ * POST /orders/:id/cod/settle (§7.8): the courier has paid over the COD money. Creates one COD
+ * payment for the order's COD amount, dated `settledAt` (now if left out).
+ */
+export const codSettleSchema = z
+  .strictObject({
+    settledAt: z.iso
+      .datetime({ offset: true, error: 'Enter when the courier paid you, as a date and time.' })
+      .optional(),
+    reference: optionalText(PAYMENT_REFERENCE_MAX_LENGTH),
+    notes: optionalText(PAYMENT_NOTES_MAX_LENGTH),
+  })
+  .superRefine((input, ctx) => checkMoneyDate(input.settledAt, ['settledAt'], ctx));
+
+export type CodSettleRequest = z.input<typeof codSettleSchema>;
+export type CodSettleInput = z.output<typeof codSettleSchema>;

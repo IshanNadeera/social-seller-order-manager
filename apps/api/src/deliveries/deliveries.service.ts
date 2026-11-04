@@ -200,7 +200,11 @@ export class DeliveriesService {
         reason,
       });
       if (!check.ok) {
-        throw refuse(check.code, check.message, check.code === 'REASON_REQUIRED' ? 'reason' : undefined);
+        throw refuse(
+          check.code,
+          check.message,
+          check.code === 'REASON_REQUIRED' ? 'reason' : undefined,
+        );
       }
       const rule = DELIVERY_RULE_EFFECTS[action.to];
       const now = new Date();
@@ -210,9 +214,7 @@ export class DeliveriesService {
         action.to === 'DELIVERED' ? 'COMPLETED' : action.to === 'RETURNED' ? 'RETURNED' : null;
       // COD follows too: delivered → the courier has it; returned → nothing more to collect (§7.8).
       const codStatus =
-        rule.codTrigger === null
-          ? null
-          : nextCodStatus(delivery.codStatus, rule.codTrigger);
+        rule.codTrigger === null ? null : nextCodStatus(delivery.codStatus, rule.codTrigger);
 
       const data: Prisma.DeliveryUncheckedUpdateManyInput = { status: action.to };
       if (action.to === 'DISPATCHED') {
@@ -243,7 +245,14 @@ export class DeliveriesService {
         newValue: Prisma.InputJsonObject,
       ) =>
         tx.orderEvent.create({
-          data: tenantData(auth, { orderId, actorUserId: auth.userId, type, oldValue, newValue, reason }),
+          data: tenantData(auth, {
+            orderId,
+            actorUserId: auth.userId,
+            type,
+            oldValue,
+            newValue,
+            reason,
+          }),
         });
       await event(
         'DELIVERY_STATUS_CHANGED',
@@ -256,7 +265,11 @@ export class DeliveriesService {
         },
       );
       if (orderBecomes !== null && orderBecomes !== order.orderStatus) {
-        await event('ORDER_STATUS_CHANGED', { orderStatus: order.orderStatus }, { orderStatus: orderBecomes });
+        await event(
+          'ORDER_STATUS_CHANGED',
+          { orderStatus: order.orderStatus },
+          { orderStatus: orderBecomes },
+        );
       }
       if (codStatus !== null && codStatus !== delivery.codStatus) {
         await event(

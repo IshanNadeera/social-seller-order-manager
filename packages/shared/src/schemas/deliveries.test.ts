@@ -50,10 +50,12 @@ describe('deliveryUpdateSchema (§9.4)', () => {
 describe('delivery action bodies (§7.2)', () => {
   it('dispatch takes optional courier details; delivered takes nothing', () => {
     expect(deliveryDispatchSchema.parse({})).toEqual({});
-    expect(deliveryDispatchSchema.parse({ courierName: 'Domex', trackingNumber: ' DX1 ' })).toEqual({
-      courierName: 'Domex',
-      trackingNumber: 'DX1',
-    });
+    expect(deliveryDispatchSchema.parse({ courierName: 'Domex', trackingNumber: ' DX1 ' })).toEqual(
+      {
+        courierName: 'Domex',
+        trackingNumber: 'DX1',
+      },
+    );
     expect(deliveryDeliveredSchema.safeParse({}).success).toBe(true);
     expect(deliveryDeliveredSchema.safeParse({ status: 'DELIVERED' }).success).toBe(false);
   });
@@ -62,7 +64,9 @@ describe('delivery action bodies (§7.2)', () => {
     expect(deliveryFailedSchema.safeParse({ reason: '  ' }).error?.issues[0]?.message).toBe(
       'Say why the delivery failed.',
     );
-    expect(deliveryFailedSchema.parse({ reason: ' Nobody home ' })).toEqual({ reason: 'Nobody home' });
+    expect(deliveryFailedSchema.parse({ reason: ' Nobody home ' })).toEqual({
+      reason: 'Nobody home',
+    });
     expect(deliveryReturnedSchema.parse({})).toEqual({});
     expect(deliveryReturnedSchema.parse({ reason: '' })).toEqual({ reason: null });
   });
