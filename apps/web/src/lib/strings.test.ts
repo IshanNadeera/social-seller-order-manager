@@ -1,4 +1,5 @@
 import {
+  COD_STATUSES,
   DELIVERY_STATUSES,
   FULFILMENT_TYPES,
   ORDER_STAGES,
@@ -44,6 +45,8 @@ describe('status labels', () => {
     ['order status', ORDER_STATUSES, strings.orderStatus],
     ['payment status', PAYMENT_STATUSES, strings.paymentStatus],
     ['delivery status', DELIVERY_STATUSES, strings.deliveryStatus],
+    ['COD status', COD_STATUSES, strings.codStatus],
+    ['status action', ORDER_STATUSES, strings.orders.detail.move],
   ] as const;
 
   it.each(sets)('every %s has a label, and no two share one', (_name, codes, labels) => {

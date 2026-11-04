@@ -1,6 +1,13 @@
 // Data the order form needs (docs/DEVELOPMENT.md §6.4, §9.2–§9.4), through TanStack Query.
-import type { CustomerSummary, OrderSummary, Page, ProductView } from '@ssom/shared';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import type {
+  CustomerSummary,
+  OrderDetail,
+  OrderEventView,
+  OrderSummary,
+  Page,
+  ProductView,
+} from '@ssom/shared';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../../lib/api-context';
 import { useDebouncedValue } from '../../lib/use-debounced-value';
 import { listApiPath } from '../../lib/use-list-params';
@@ -15,7 +22,51 @@ export const orderKeys = {
   all: (businessId: string) => ['orders', businessId] as const,
   list: (businessId: string, params: OrderListParams) =>
     ['orders', businessId, 'list', params] as const,
+  detail: (businessId: string, id: string) => ['orders', businessId, 'detail', id] as const,
+  events: (businessId: string, id: string) => ['orders', businessId, 'events', id] as const,
 };
+
+/** Activity entries per page on the order page. */
+export const EVENTS_PAGE_SIZE = 25;
+
+/** GET /orders/:id: items, delivery copy and payment summary (§9.4). */
+export function useOrder(id: string) {
+  const api = useApi();
+  const businessId = useBusinessId();
+  return useQuery({
+    queryKey: orderKeys.detail(businessId, id),
+    queryFn: ({ signal }) => api.get<OrderDetail>(`/orders/${encodeURIComponent(id)}`, { signal }),
+  });
+}
+
+/** GET /orders/:id/events, oldest first, one page at a time. */
+export function useOrderEvents(id: string, page: number) {
+  const api = useApi();
+  const businessId = useBusinessId();
+  return useQuery({
+    queryKey: [...orderKeys.events(businessId, id), page],
+    queryFn: ({ signal }) =>
+      api.get<Page<OrderEventView>>(
+        `/orders/${encodeURIComponent(id)}/events?page=${page}&pageSize=${EVENTS_PAGE_SIZE}`,
+        { signal },
+      ),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * After a change: cache the order the API returned (every order action answers with the whole
+ * order), and refetch its activity and the lists, whose stage or totals may have changed.
+ */
+export function useOrderSaved() {
+  const queryClient = useQueryClient();
+  const businessId = useBusinessId();
+  return (order: OrderDetail) => {
+    queryClient.setQueryData(orderKeys.detail(businessId, order.id), order);
+    void queryClient.invalidateQueries({ queryKey: orderKeys.events(businessId, order.id) });
+    void queryClient.invalidateQueries({ queryKey: [...orderKeys.all(businessId), 'list'] });
+  };
+}
 
 /** GET /orders with the list's search, filters and page (§6.3, §9.5). */
 export function useOrderList(params: OrderListParams) {

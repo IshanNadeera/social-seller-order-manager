@@ -10,3 +10,16 @@ export function formatDate(iso: string, timeZone: string): string {
     timeZone,
   }).format(new Date(iso));
 }
+
+/** A moment such as "1 Nov 2026, 11:30" (24-hour), on the clock of `timeZone`. */
+export function formatDateTime(iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat(strings.locale, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone,
+  }).format(new Date(iso));
+}

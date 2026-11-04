@@ -72,11 +72,16 @@ describe('orders list (§6.3)', () => {
     for (const text of ['077 ••• 4567', strings.orderStage.OUT_FOR_DELIVERY, 'LKR 2,450.00']) {
       expect(row).toHaveTextContent(text);
     }
-    expect(within(row).getByRole('link', { name: 'NIM-0042' })).toHaveAttribute('href', `/orders/${ID}`);
+    expect(within(row).getByRole('link', { name: 'NIM-0042' })).toHaveAttribute(
+      'href',
+      `/orders/${ID}`,
+    );
   });
 
   it('filters by status, payment, delivery, source and dates, in the URL and the request; clears them', async () => {
-    const { api, router } = setup('/orders', (api) => api.on('GET', '/orders', () => page([order()])));
+    const { api, router } = setup('/orders', (api) =>
+      api.on('GET', '/orders', () => page([order()])),
+    );
     await screen.findByRole('table');
     expect(screen.queryByRole('button', { name: s.clearFilters })).not.toBeInTheDocument();
 
@@ -101,7 +106,9 @@ describe('orders list (§6.3)', () => {
   });
 
   it('searches by number, name or phone once typing pauses', async () => {
-    const { api, router } = setup('/orders', (api) => api.on('GET', '/orders', () => page([order()])));
+    const { api, router } = setup('/orders', (api) =>
+      api.on('GET', '/orders', () => page([order()])),
+    );
     await screen.findByRole('table');
     await userEvent.type(screen.getByRole('searchbox', { name: s.search }), 'nim-0042');
     await waitFor(() => expect(lastPath(api)).toBe('/orders?q=nim-0042'));
@@ -150,14 +157,21 @@ describe('orders list (§6.3)', () => {
     setup('/orders?from=2026-11-02&to=2026-11-01', (api) =>
       api.on('GET', '/orders', () =>
         fail
-          ? errorReply(400, 'VALIDATION_ERROR', 'The end date must be on or after the start date.', {
-              to: 'The end date must be on or after the start date.',
-            })
+          ? errorReply(
+              400,
+              'VALIDATION_ERROR',
+              'The end date must be on or after the start date.',
+              {
+                to: 'The end date must be on or after the start date.',
+              },
+            )
           : page([order()]),
       ),
     );
     expect(await screen.findByText(s.loadFailed)).toBeInTheDocument();
-    expect(screen.getByText('The end date must be on or after the start date.')).toBeInTheDocument();
+    expect(
+      screen.getByText('The end date must be on or after the start date.'),
+    ).toBeInTheDocument();
     fail = false;
     await userEvent.click(screen.getByRole('button', { name: strings.common.retry }));
     expect(await screen.findByRole('table')).toBeInTheDocument();
