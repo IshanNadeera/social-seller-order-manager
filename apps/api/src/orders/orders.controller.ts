@@ -1,5 +1,10 @@
-import { Body, Controller, Get, Header, Param, Post, Query, Res } from '@nestjs/common';
-import { orderCreateSchema, orderEventsQuerySchema, orderListQuerySchema } from '@ssom/shared';
+import { Body, Controller, Get, Header, Param, Patch, Post, Query, Res } from '@nestjs/common';
+import {
+  orderCreateSchema,
+  orderEventsQuerySchema,
+  orderListQuerySchema,
+  orderUpdateSchema,
+} from '@ssom/shared';
 import type {
   OrderCreateInput,
   OrderDetail,
@@ -7,6 +12,7 @@ import type {
   OrderEventsQuery,
   OrderListQuery,
   OrderSummary,
+  OrderUpdateInput,
   Page,
 } from '@ssom/shared';
 import type { Response } from 'express';
@@ -74,5 +80,16 @@ export class OrdersController {
     res.status(result.status);
     if (result.replayed) res.setHeader('Idempotent-Replayed', 'true');
     return result.body;
+  }
+
+  /** Edits what §7.4 still allows; totals and the payment summary are recalculated (§9.4). */
+  @Patch(':id')
+  @Header('Cache-Control', 'no-store')
+  update(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', IdParamPipe) id: string,
+    @Body(new ZodBodyPipe(orderUpdateSchema)) input: OrderUpdateInput,
+  ): Promise<OrderDetail> {
+    return this.orders.update(auth, id, input);
   }
 }

@@ -11,7 +11,13 @@ import {
   SOURCE_CHANNELS,
 } from '../enums.js';
 import { SOURCE_NOTE_MAX_LENGTH } from '../constants.js';
-import { optionalText, requiredText, searchListQueryFields } from './common.js';
+import {
+  changeAtLeastOneField,
+  changesSomething,
+  optionalText,
+  requiredText,
+  searchListQueryFields,
+} from './common.js';
 import { addressInputSchema } from './customers.js';
 import { moneySchema } from './money.js';
 
@@ -50,6 +56,26 @@ const deliverySchema = addressInputSchema.omit({ label: true }).extend({
   codAmount: moneySchema('Enter the COD amount.').optional(),
 });
 
+type OrderItemInput = z.output<typeof orderItemSchema>;
+type Issue = (path: PropertyKey[], message: string) => void;
+
+/** Each item is a product, or a custom item with a name and a price. */
+function checkItems(items: readonly OrderItemInput[], issue: Issue): void {
+  items.forEach((item, index) => {
+    if (item.productId === undefined) {
+      if (item.name === undefined) issue(['items', index, 'name'], 'Enter the item name.');
+      if (item.unitPrice === undefined) issue(['items', index, 'unitPrice'], 'Enter the price.');
+    } else if (item.name !== undefined) {
+      issue(['items', index, 'name'], 'A catalogue product uses its own name.');
+    }
+  });
+}
+
+const itemsSchema = z
+  .array(orderItemSchema, { error: 'Add at least one item.' })
+  .min(1, 'Add at least one item.')
+  .max(ORDER_MAX_ITEMS, `An order can have at most ${ORDER_MAX_ITEMS} items.`);
+
 export const orderCreateSchema = z
   .strictObject({
     sourceChannel: z.enum(SOURCE_CHANNELS, { error: 'Choose where the order came from.' }),
@@ -59,10 +85,7 @@ export const orderCreateSchema = z
       .default('DELIVERY'),
     /** Required except for an anonymous walk-in sale (§7.10). */
     customerId: uuid('Choose a customer.').nullable().optional(),
-    items: z
-      .array(orderItemSchema, { error: 'Add at least one item.' })
-      .min(1, 'Add at least one item.')
-      .max(ORDER_MAX_ITEMS, `An order can have at most ${ORDER_MAX_ITEMS} items.`),
+    items: itemsSchema,
     discountAmount: moneySchema('Enter the discount.').default('0.00'),
     /** Defaults to the business's delivery fee for delivery orders, 0 for pickup. */
     deliveryFee: moneySchema('Enter the delivery fee.').optional(),
@@ -125,19 +148,51 @@ export const orderCreateSchema = z
     if (order.delivery?.saveToCustomer === true && (order.customerId ?? null) === null) {
       issue(['delivery', 'saveToCustomer'], 'Choose a customer to save the address to.');
     }
-    // Each item is a product, or a custom item with a name and a price.
-    order.items.forEach((item, index) => {
-      if (item.productId === undefined) {
-        if (item.name === undefined) issue(['items', index, 'name'], 'Enter the item name.');
-        if (item.unitPrice === undefined) issue(['items', index, 'unitPrice'], 'Enter the price.');
-      } else if (item.name !== undefined) {
-        issue(['items', index, 'name'], 'A catalogue product uses its own name.');
-      }
-    });
+    checkItems(order.items, issue);
   });
 
 export type OrderCreateRequest = z.input<typeof orderCreateSchema>;
 export type OrderCreateInput = z.output<typeof orderCreateSchema>;
+
+/**
+ * PATCH /orders/:id (§7.4). Send only what changes. `items` replaces the whole list. `delivery` is the
+ * address for switching a pickup order to delivery; other address, courier and COD changes go to
+ * PATCH /orders/:id/delivery. The server checks the edit-lock rules and recalculates every total.
+ */
+export const orderUpdateSchema = z
+  .strictObject({
+    sourceChannel: z.enum(SOURCE_CHANNELS, { error: 'Choose where the order came from.' }).optional(),
+    sourceNote: optionalText(SOURCE_NOTE_MAX_LENGTH),
+    fulfilmentType: z.enum(FULFILMENT_TYPES, { error: 'Choose delivery or pickup.' }).optional(),
+    /** Editable with the fulfilment type, e.g. a COD order switched to pickup needs another method. */
+    paymentMethod: z.enum(PAYMENT_METHODS, { error: 'Choose how the customer will pay.' }).optional(),
+    items: itemsSchema.optional(),
+    discountAmount: moneySchema('Enter the discount.').optional(),
+    deliveryFee: moneySchema('Enter the delivery fee.').optional(),
+    delivery: addressInputSchema.omit({ label: true }).extend({
+      sourceAddressId: uuid('Choose an address from the list.').nullable().optional(),
+    }).optional(),
+    notes: optionalText(ORDER_NOTES_MAX_LENGTH),
+  })
+  .superRefine((order, ctx) => {
+    const issue: Issue = (path, message) => ctx.addIssue({ code: 'custom', path, message });
+    if (order.items !== undefined) checkItems(order.items, issue);
+    if (order.delivery !== undefined && order.fulfilmentType !== 'DELIVERY') {
+      issue(['delivery'], 'Send the address only when switching the order to delivery.');
+    }
+    if (order.fulfilmentType === 'PICKUP') {
+      if (order.deliveryFee !== undefined && order.deliveryFee !== '0.00') {
+        issue(['deliveryFee'], 'A pickup order has no delivery fee.');
+      }
+      if (order.paymentMethod === 'COD') {
+        issue(['paymentMethod'], 'Cash on delivery is only for delivery orders.');
+      }
+    }
+  })
+  .refine(changesSomething, changeAtLeastOneField);
+
+export type OrderUpdateRequest = z.input<typeof orderUpdateSchema>;
+export type OrderUpdateInput = z.output<typeof orderUpdateSchema>;
 
 /** Longest date range a list or report may ask for (§9.5). */
 export const MAX_DATE_RANGE_DAYS = 366;

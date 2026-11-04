@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { orderCreateSchema, orderListQuerySchema } from '../index.js';
+import { orderCreateSchema, orderListQuerySchema, orderUpdateSchema } from '../index.js';
 
 const CUSTOMER = '6a1f3c2e-4b5d-4e6f-8a9b-0c1d2e3f4a5b';
 const PRODUCT = '9d4c6f5b-7e80-4192-bdae-3f4a5b6c7d8e';
@@ -146,5 +146,48 @@ describe('orderListQuerySchema', () => {
     expect(issues({ orderStatus: 'SHIPPED' })).toEqual({
       orderStatus: 'Choose an order status from the list.',
     });
+  });
+});
+
+describe('orderUpdateSchema', () => {
+  const updateErrors = (body: object) =>
+    Object.fromEntries(
+      (orderUpdateSchema.safeParse(body).error?.issues ?? []).map((issue) => [issue.path.join('.'), issue.message]),
+    );
+
+  it('takes only what changes, and normalises money', () => {
+    expect(orderUpdateSchema.parse({ discountAmount: '50' })).toEqual({ discountAmount: '50.00' });
+    expect(orderUpdateSchema.parse({ notes: '' })).toEqual({ notes: null });
+  });
+
+  it('refuses an empty edit, client totals, business IDs and statuses', () => {
+    expect(updateErrors({})).toEqual({ '': 'Change at least one field.' });
+    for (const field of ['totalAmount', 'businessId', 'orderStatus', 'customerId']) {
+      const result = orderUpdateSchema.safeParse({ notes: 'x', [field]: 'y' });
+      expect(result.error?.issues.some((issue) => issue.code === 'unrecognized_keys')).toBe(true);
+    }
+  });
+
+  it('checks replaced items like create does', () => {
+    expect(updateErrors({ items: [] })).toEqual({ items: 'Add at least one item.' });
+    expect(updateErrors({ items: [{ quantity: 1 }] })).toEqual({
+      'items.0.name': 'Enter the item name.',
+      'items.0.unitPrice': 'Enter the price.',
+    });
+    expect(updateErrors({ items: [{ productId: PRODUCT, name: 'X', quantity: 1 }] })).toEqual({
+      'items.0.name': 'A catalogue product uses its own name.',
+    });
+  });
+
+  it('matches a fulfilment switch with its address, fee and payment method', () => {
+    expect(updateErrors({ fulfilmentType: 'DELIVERY', delivery: address })).toEqual({});
+    expect(updateErrors({ delivery: address })).toEqual({
+      delivery: 'Send the address only when switching the order to delivery.',
+    });
+    expect(updateErrors({ fulfilmentType: 'PICKUP', deliveryFee: '350', paymentMethod: 'COD' })).toEqual({
+      deliveryFee: 'A pickup order has no delivery fee.',
+      paymentMethod: 'Cash on delivery is only for delivery orders.',
+    });
+    expect(updateErrors({ fulfilmentType: 'PICKUP', paymentMethod: 'CASH' })).toEqual({});
   });
 });
