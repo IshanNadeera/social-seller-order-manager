@@ -1,4 +1,4 @@
-import type { SourceChannel, SriLankaDistrict } from '@ssom/shared';
+import type { FulfilmentType, PaymentMethod, SourceChannel, SriLankaDistrict } from '@ssom/shared';
 
 // Every piece of user-facing text lives here, so Sinhala and Tamil can be added later
 // without hunting through components (docs/DEVELOPMENT.md §6.9).
@@ -46,6 +46,18 @@ const sourceChannelLabels: Record<SourceChannel, string> = {
   OTHER: 'Other',
 };
 
+const paymentMethodLabels: Record<PaymentMethod, string> = {
+  CASH: 'Cash',
+  BANK_TRANSFER: 'Bank transfer',
+  COD: 'Cash on delivery (COD)',
+  OTHER: 'Other',
+};
+
+const fulfilmentTypeLabels: Record<FulfilmentType, string> = {
+  DELIVERY: 'Delivery',
+  PICKUP: 'Pickup',
+};
+
 export const strings = {
   appName: 'Social Seller Order Manager',
   /** Locale for dates and numbers (Intl). Changes with the UI language. */
@@ -54,6 +66,7 @@ export const strings = {
     loading: 'Loading…',
     retry: 'Try again',
     cancel: 'Cancel',
+    close: 'Close',
     saving: 'Saving…',
     edit: 'Edit',
     /** Shown where a value is missing. */
@@ -366,6 +379,96 @@ export const strings = {
       pending: 'Archiving…',
     },
   },
+  orders: {
+    detailTitle: 'Order',
+    form: {
+      back: 'All orders',
+      steps: {
+        source: 'Source',
+        customer: 'Customer',
+        fulfilment: 'Delivery or pickup',
+        delivery: 'Delivery details',
+        items: 'Items',
+        charges: 'Discount and delivery fee',
+        payment: 'Payment',
+        notes: 'Notes',
+        review: 'Review',
+      },
+      sourceChannel: 'Where did the order come from?',
+      chooseSource: 'Choose a source',
+      sourceNote: 'Source details (optional)',
+      sourceNoteHint: 'Required when the source is Other, like “Market stall”.',
+      customer: {
+        search: 'Find a customer',
+        searchHint: 'Name or phone number. Walk-in sales can skip this.',
+        results: 'Matching customers',
+        noMatches: (q: string) => `No customers match “${q}”.`,
+        searchFailed: 'We couldn’t search your customers.',
+        add: 'New customer',
+        change: 'Change customer',
+        chosen: (name: string) => `Customer: ${name}`,
+        addressFailed:
+          'We couldn’t load this customer’s saved addresses. Type the address instead.',
+      },
+      saveToCustomer: 'Save this address to the customer',
+      fromSavedAddress:
+        'Filled in from the customer’s saved address. Edit it if this order goes somewhere else.',
+      item: {
+        legend: (n: number) => `Item ${n}`,
+        search: 'Product or item name',
+        searchHint: 'Search your products, or type a name for a one-off item.',
+        results: 'Matching products',
+        newProduct: 'New product',
+        change: 'Change product',
+        chosen: (name: string) => `Product: ${name}`,
+        quantity: 'Quantity',
+        unitPrice: 'Unit price',
+        lineTotal: (amount: string) => `Line total ${amount}`,
+        remove: 'Remove item',
+        add: 'Add another item',
+      },
+      discount: 'Discount (optional)',
+      discountHint: 'A fixed amount off the order.',
+      deliveryFee: 'Delivery fee',
+      deliveryFeeHint: 'Your default fee. Change it for this order if needed.',
+      paymentMethod: 'Payment method',
+      choosePaymentMethod: 'Choose how the customer will pay',
+      received: 'Amount received now (optional)',
+      receivedHint: 'An advance or full payment you already have.',
+      receivedMethod: 'Received by',
+      receivedMethodSame: 'Same as the payment method',
+      notes: 'Private notes (optional)',
+      notesHint: 'Only you and your team see these.',
+      summary: {
+        subtotal: 'Subtotal',
+        discount: 'Discount',
+        deliveryFee: 'Delivery fee',
+        total: 'Total',
+        received: 'Received now',
+        balance: 'Balance due',
+        note: 'A preview. The final amounts are calculated when you save.',
+      },
+      submit: 'Save order',
+      pending: 'Saving order…',
+      failed: 'The order wasn’t saved. Everything you entered is still here.',
+    },
+    quickCustomer: {
+      title: 'New customer',
+      name: 'Name',
+      phone: 'Phone (optional)',
+      submit: 'Add customer',
+      pending: 'Adding…',
+    },
+    quickProduct: {
+      title: 'New product',
+      name: 'Name',
+      price: 'Selling price',
+      submit: 'Add product',
+      pending: 'Adding…',
+    },
+  },
   sourceChannel: sourceChannelLabels,
+  paymentMethod: paymentMethodLabels,
+  fulfilmentType: fulfilmentTypeLabels,
   district: districtLabels,
 } as const;

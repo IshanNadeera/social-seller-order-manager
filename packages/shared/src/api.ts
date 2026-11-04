@@ -24,6 +24,8 @@ export interface MeBusiness {
   orderPrefix: string;
   currency: string;
   timezone: string;
+  /** Pre-fills a new delivery order's fee (§6.4), e.g. "350.00". */
+  defaultDeliveryFee: string;
 }
 
 /** GET /api/v1/me (§9.1). */

@@ -121,6 +121,7 @@ describe('GET /me and GET /health with the database', () => {
         orderPrefix: 'MET',
         currency: 'LKR',
         timezone: 'Asia/Colombo',
+        defaultDeliveryFee: '0.00',
       },
     });
   });

@@ -28,12 +28,15 @@ export function AddressFields({
   errors,
   autoFocus = false,
   savedDistrict = null,
+  showLabel = true,
 }: {
   field: (name: AddressFieldName) => UseFormRegisterReturn;
   errors: Partial<Record<AddressFieldName, string>>;
   autoFocus?: boolean;
   /** The district already saved on an address being edited (it may predate the fixed list). */
   savedDistrict?: string | null;
+  /** Off for an order's copy of an address, which has no label (§7.11). */
+  showLabel?: boolean;
 }) {
   // A district saved before the fixed list (§7.11) stays selectable, so editing never clears it.
   const legacyDistrict =
@@ -87,13 +90,15 @@ export function AddressFields({
           {...field('postalCode')}
         />
       </div>
-      <TextField
-        label={f.label}
-        hint={f.labelHint}
-        autoComplete="off"
-        error={errors.label}
-        {...field('label')}
-      />
+      {showLabel && (
+        <TextField
+          label={f.label}
+          hint={f.labelHint}
+          autoComplete="off"
+          error={errors.label}
+          {...field('label')}
+        />
+      )}
     </div>
   );
 }

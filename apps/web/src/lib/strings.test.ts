@@ -1,4 +1,9 @@
-import { SOURCE_CHANNELS, SRI_LANKA_DISTRICTS } from '@ssom/shared';
+import {
+  FULFILMENT_TYPES,
+  PAYMENT_METHODS,
+  SOURCE_CHANNELS,
+  SRI_LANKA_DISTRICTS,
+} from '@ssom/shared';
 import { describe, expect, it } from 'vitest';
 import { strings } from './strings';
 
@@ -16,5 +21,15 @@ describe('strings', () => {
 describe('district labels', () => {
   it.each(SRI_LANKA_DISTRICTS)('has a label for %s', (district) => {
     expect(strings.district[district].trim()).not.toBe('');
+  });
+});
+
+describe('payment method and fulfilment labels', () => {
+  it.each([...PAYMENT_METHODS])('has a label for payment method %s', (method) => {
+    expect(strings.paymentMethod[method].trim()).not.toBe('');
+  });
+
+  it.each([...FULFILMENT_TYPES])('has a label for fulfilment type %s', (type) => {
+    expect(strings.fulfilmentType[type].trim()).not.toBe('');
   });
 });

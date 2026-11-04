@@ -129,6 +129,7 @@ describe('POST /onboarding', () => {
         orderPrefix: 'NIM',
         currency: 'LKR',
         timezone: 'Asia/Colombo',
+        defaultDeliveryFee: '0.00',
       },
     });
 

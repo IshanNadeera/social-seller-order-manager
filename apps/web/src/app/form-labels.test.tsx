@@ -90,6 +90,14 @@ const FORMS: FormCase[] = [
       await screen.findByRole('heading', { name: strings.products.create.title });
     },
   },
+  {
+    name: 'new order, with a second item line',
+    path: '/orders/new',
+    open: async () => {
+      await screen.findByRole('heading', { level: 1, name: strings.nav.newOrder });
+      await userEvent.click(screen.getByRole('button', { name: strings.orders.form.item.add }));
+    },
+  },
 ];
 
 describe('every form control has a label (§6.9)', () => {

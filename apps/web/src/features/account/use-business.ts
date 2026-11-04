@@ -16,3 +16,8 @@ export function useBusinessTimeZone(): string {
 export function useBusinessCurrency(): string {
   return useMe().data?.business?.currency ?? 'LKR';
 }
+
+/** The business's default delivery fee, pre-filled on new delivery orders (§6.4). */
+export function useBusinessDefaultDeliveryFee(): string {
+  return useMe().data?.business?.defaultDeliveryFee ?? '0.00';
+}

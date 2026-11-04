@@ -34,6 +34,7 @@ export function memberMe(overrides: Partial<MeResponse['business']> = {}): MeRes
       orderPrefix: 'NIM',
       currency: 'LKR',
       timezone: 'Asia/Colombo',
+      defaultDeliveryFee: '350.00',
       ...overrides,
     },
   };

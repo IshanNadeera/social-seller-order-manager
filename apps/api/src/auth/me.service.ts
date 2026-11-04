@@ -18,13 +18,22 @@ export class MeService {
   async get(user: VerifiedUser, auth: AuthContext | undefined): Promise<MeResponse> {
     await this.syncEmail(user);
 
-    const business =
+    const row =
       auth === undefined
         ? null
         : await this.prisma.business.findUnique({
             where: { id: auth.businessId },
-            select: { id: true, name: true, orderPrefix: true, currency: true, timezone: true },
+            select: {
+              id: true,
+              name: true,
+              orderPrefix: true,
+              currency: true,
+              timezone: true,
+              defaultDeliveryFee: true,
+            },
           });
+    const business =
+      row === null ? null : { ...row, defaultDeliveryFee: row.defaultDeliveryFee.toFixed(2) };
 
     return {
       user: { id: user.userId, email: user.email },
