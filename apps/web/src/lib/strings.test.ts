@@ -1,6 +1,10 @@
 import {
+  DELIVERY_STATUSES,
   FULFILMENT_TYPES,
+  ORDER_STAGES,
+  ORDER_STATUSES,
   PAYMENT_METHODS,
+  PAYMENT_STATUSES,
   SOURCE_CHANNELS,
   SRI_LANKA_DISTRICTS,
 } from '@ssom/shared';
@@ -31,5 +35,20 @@ describe('payment method and fulfilment labels', () => {
 
   it.each([...FULFILMENT_TYPES])('has a label for fulfilment type %s', (type) => {
     expect(strings.fulfilmentType[type].trim()).not.toBe('');
+  });
+});
+
+describe('status labels', () => {
+  const sets = [
+    ['stage', ORDER_STAGES, strings.orderStage],
+    ['order status', ORDER_STATUSES, strings.orderStatus],
+    ['payment status', PAYMENT_STATUSES, strings.paymentStatus],
+    ['delivery status', DELIVERY_STATUSES, strings.deliveryStatus],
+  ] as const;
+
+  it.each(sets)('every %s has a label, and no two share one', (_name, codes, labels) => {
+    const texts = codes.map((code) => (labels as Record<string, string>)[code]?.trim() ?? '');
+    expect(texts.every((text) => text !== '')).toBe(true);
+    expect(new Set(texts).size).toBe(texts.length);
   });
 });

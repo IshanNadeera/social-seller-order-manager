@@ -13,6 +13,7 @@ import { CustomersListPage } from '../features/customers/CustomersListPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { OnboardingPage } from '../features/onboarding/OnboardingPage';
 import { OrderCreatePage } from '../features/orders/OrderCreatePage';
+import { OrdersListPage } from '../features/orders/OrdersListPage';
 import { ProductCreatePage, ProductEditPage } from '../features/products/ProductFormPages';
 import { ProductsListPage } from '../features/products/ProductsListPage';
 import { strings } from '../lib/strings';
@@ -61,9 +62,9 @@ export const routes: RouteObject[] = [
             element: <RootLayout />,
             children: [
               { index: true, element: <DashboardPage /> },
-              // Placeholders until their tasks land (orders C14–C15, reports E3,
+              // Placeholders until their tasks land (orders C15, reports E3,
               // settings E5), so every navigation link leads somewhere.
-              { path: 'orders', element: <PlaceholderPage title={strings.nav.orders} /> },
+              { path: 'orders', element: <OrdersListPage /> },
               { path: 'orders/new', element: <OrderCreatePage /> },
               // Where a saved order lands until the order details page (C15) replaces it.
               {

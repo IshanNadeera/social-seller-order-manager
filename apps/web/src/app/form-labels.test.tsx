@@ -91,6 +91,14 @@ const FORMS: FormCase[] = [
     },
   },
   {
+    name: 'orders list, search and filters',
+    path: '/orders',
+    api: (api) => api.on('GET', '/orders', () => emptyPage),
+    open: async () => {
+      await screen.findByRole('heading', { level: 1, name: strings.orders.list.title });
+    },
+  },
+  {
     name: 'new order, with a second item line',
     path: '/orders/new',
     open: async () => {

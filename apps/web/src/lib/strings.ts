@@ -1,4 +1,13 @@
-import type { FulfilmentType, PaymentMethod, SourceChannel, SriLankaDistrict } from '@ssom/shared';
+import type {
+  DeliveryStatus,
+  FulfilmentType,
+  OrderStage,
+  OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
+  SourceChannel,
+  SriLankaDistrict,
+} from '@ssom/shared';
 
 // Every piece of user-facing text lives here, so Sinhala and Tamil can be added later
 // without hunting through components (docs/DEVELOPMENT.md §6.9).
@@ -56,6 +65,48 @@ const paymentMethodLabels: Record<PaymentMethod, string> = {
 const fulfilmentTypeLabels: Record<FulfilmentType, string> = {
   DELIVERY: 'Delivery',
   PICKUP: 'Pickup',
+};
+
+// What sellers read for each stage (§7.3), order status, payment status and delivery status.
+const orderStageLabels: Record<OrderStage, string> = {
+  NEW: 'New',
+  AWAITING_CONFIRMATION: 'Awaiting confirmation',
+  CONFIRMED: 'Confirmed',
+  PREPARING: 'Preparing',
+  READY_TO_SEND: 'Ready to send',
+  READY_FOR_PICKUP: 'Ready for pickup',
+  OUT_FOR_DELIVERY: 'Out for delivery',
+  DELIVERY_FAILED: 'Delivery failed',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
+  RETURNED: 'Returned',
+};
+
+const orderStatusLabels: Record<OrderStatus, string> = {
+  NEW: 'New',
+  PENDING_CONFIRMATION: 'Awaiting confirmation',
+  CONFIRMED: 'Confirmed',
+  PREPARING: 'Preparing',
+  READY: 'Ready',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
+  RETURNED: 'Returned',
+};
+
+const paymentStatusLabels: Record<PaymentStatus, string> = {
+  UNPAID: 'Unpaid',
+  PARTIALLY_PAID: 'Part paid',
+  PAID: 'Paid',
+  PARTIALLY_REFUNDED: 'Part refunded',
+  REFUNDED: 'Refunded',
+};
+
+const deliveryStatusLabels: Record<DeliveryStatus, string> = {
+  PENDING: 'Not sent yet',
+  DISPATCHED: 'Dispatched',
+  DELIVERED: 'Delivered',
+  FAILED: 'Delivery failed',
+  RETURNED: 'Returned',
 };
 
 export const strings = {
@@ -381,6 +432,39 @@ export const strings = {
   },
   orders: {
     detailTitle: 'Order',
+    list: {
+      title: 'Orders',
+      add: 'New order',
+      search: 'Search orders',
+      searchHint: 'Order number, customer name or phone.',
+      filters: 'Filters',
+      orderStatus: 'Order status',
+      paymentStatus: 'Payment',
+      deliveryStatus: 'Delivery',
+      sourceChannel: 'Source',
+      any: 'Any',
+      from: 'From',
+      to: 'To',
+      dateHint: 'Order dates, both days included.',
+      clearFilters: 'Clear filters',
+      listLabel: 'Orders',
+      loadFailed: 'We couldn’t load your orders.',
+      emptyTitle: 'No orders yet',
+      emptyBody: 'Orders you take on WhatsApp, Facebook, the phone or in person will show up here.',
+      noMatches: 'No orders match your search and filters.',
+      columns: {
+        order: 'Order',
+        date: 'Date',
+        customer: 'Customer',
+        stage: 'Stage',
+        payment: 'Payment',
+        total: 'Total',
+        balance: 'Balance due',
+      },
+      total: (amount: string) => `Total ${amount}`,
+      balance: (amount: string) => `Balance ${amount}`,
+      source: (source: string) => `From ${source}`,
+    },
     form: {
       back: 'All orders',
       steps: {
@@ -470,5 +554,9 @@ export const strings = {
   sourceChannel: sourceChannelLabels,
   paymentMethod: paymentMethodLabels,
   fulfilmentType: fulfilmentTypeLabels,
+  orderStage: orderStageLabels,
+  orderStatus: orderStatusLabels,
+  paymentStatus: paymentStatusLabels,
+  deliveryStatus: deliveryStatusLabels,
   district: districtLabels,
 } as const;
