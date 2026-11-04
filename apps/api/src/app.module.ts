@@ -8,6 +8,7 @@ import { PrismaModule } from './common/prisma.module';
 import { CustomersModule } from './customers/customers.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { OrdersModule } from './orders/orders.module';
+import { PaymentsModule } from './payments/payments.module';
 import { ProductsModule } from './products/products.module';
 
 @Module({})
@@ -25,6 +26,7 @@ export class AppModule {
         CustomersModule,
         ProductsModule,
         OrdersModule,
+        PaymentsModule,
       ],
     };
   }

@@ -8,6 +8,7 @@ import type {
   OrderStatus,
   PaymentMethod,
   PaymentStatus,
+  PaymentType,
   SourceChannel,
 } from './enums.js';
 import type { OrderStage } from './stage.js';
@@ -195,4 +196,27 @@ export interface OrderEventView {
   newValue: unknown;
   reason: string | null;
   createdAt: string;
+}
+
+/** One payment or refund record (GET /orders/:id/payments, §7.7). Records are never changed. */
+export interface PaymentView {
+  id: string;
+  type: PaymentType;
+  method: PaymentMethod;
+  /** Always positive; `type` gives the direction. */
+  amount: string;
+  /** When the money changed hands (may be backdated up to 90 days). */
+  occurredAt: string;
+  /** When it was recorded. */
+  createdAt: string;
+  refundOfPaymentId: string | null;
+  reference: string | null;
+  notes: string | null;
+  recordedBy: { id: string; name: string };
+}
+
+/** POST /orders/:id/payments: the new record and the order with its recalculated summary. */
+export interface PaymentRecorded {
+  payment: PaymentView;
+  order: OrderDetail;
 }
