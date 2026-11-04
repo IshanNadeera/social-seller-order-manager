@@ -448,7 +448,9 @@ model OrderEvent {
   oldValue    Json?          @map("old_value")
   newValue    Json?          @map("new_value")
   reason      String?
-  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  /// The insert time, not the transaction's start (now()): several events written in one
+  /// transaction (e.g. an edit and its COD change) keep the order they happened in.
+  createdAt   DateTime       @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
   order    Order    @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Restrict)

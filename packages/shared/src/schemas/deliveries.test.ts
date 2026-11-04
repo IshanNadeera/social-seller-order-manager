@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { deliveryUpdateSchema } from '../index.js';
+import {
+  deliveryDeliveredSchema,
+  deliveryDispatchSchema,
+  deliveryFailedSchema,
+  deliveryReturnedSchema,
+  deliveryUpdateSchema,
+} from '../index.js';
 
 const errors = (body: object) =>
   Object.fromEntries(
@@ -38,5 +44,26 @@ describe('deliveryUpdateSchema (§9.4)', () => {
     expect(Object.keys(errors({ codAmount: '-1' }))).toEqual(['codAmount']);
     expect(errors({ district: 'kandy' })).toEqual({});
     expect(Object.keys(errors({ district: 'Atlantis' }))).toEqual(['district']);
+  });
+});
+
+describe('delivery action bodies (§7.2)', () => {
+  it('dispatch takes optional courier details; delivered takes nothing', () => {
+    expect(deliveryDispatchSchema.parse({})).toEqual({});
+    expect(deliveryDispatchSchema.parse({ courierName: 'Domex', trackingNumber: ' DX1 ' })).toEqual({
+      courierName: 'Domex',
+      trackingNumber: 'DX1',
+    });
+    expect(deliveryDeliveredSchema.safeParse({}).success).toBe(true);
+    expect(deliveryDeliveredSchema.safeParse({ status: 'DELIVERED' }).success).toBe(false);
+  });
+
+  it('failed needs a reason; returned may have one', () => {
+    expect(deliveryFailedSchema.safeParse({ reason: '  ' }).error?.issues[0]?.message).toBe(
+      'Say why the delivery failed.',
+    );
+    expect(deliveryFailedSchema.parse({ reason: ' Nobody home ' })).toEqual({ reason: 'Nobody home' });
+    expect(deliveryReturnedSchema.parse({})).toEqual({});
+    expect(deliveryReturnedSchema.parse({ reason: '' })).toEqual({ reason: null });
   });
 });

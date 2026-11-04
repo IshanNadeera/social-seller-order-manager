@@ -2,7 +2,8 @@
 // server decides what may still change: the address before dispatch, courier details until the
 // order is returned, the COD amount before dispatch and within the balance due.
 import { z } from 'zod';
-import { changeAtLeastOneField, changesSomething, optionalText } from './common.js';
+import { STATUS_REASON_MAX_LENGTH } from '../constants.js';
+import { changeAtLeastOneField, changesSomething, optionalText, requiredText } from './common.js';
 import { addressInputSchema } from './customers.js';
 import { moneySchema } from './money.js';
 
@@ -35,3 +36,28 @@ export const deliveryUpdateSchema = addressInputSchema
 
 export type DeliveryUpdateRequest = z.input<typeof deliveryUpdateSchema>;
 export type DeliveryUpdateInput = z.output<typeof deliveryUpdateSchema>;
+
+// ---------- Delivery actions (§7.2, ADR-012): one endpoint each, so each checks its own rules ----------
+
+/** POST /orders/:id/delivery/dispatch: the courier details can be given at the same time. */
+export const deliveryDispatchSchema = z.strictObject({
+  courierName: optionalText(COURIER_FIELD_MAX_LENGTH),
+  trackingNumber: optionalText(COURIER_FIELD_MAX_LENGTH),
+});
+
+/** POST /orders/:id/delivery/delivered: nothing to send. */
+export const deliveryDeliveredSchema = z.strictObject({});
+
+/** POST /orders/:id/delivery/failed: why it failed is required (§7.2). */
+export const deliveryFailedSchema = z.strictObject({
+  reason: requiredText(STATUS_REASON_MAX_LENGTH, 'Say why the delivery failed.'),
+});
+
+/** POST /orders/:id/delivery/returned: a reason; required when a delivered parcel comes back. */
+export const deliveryReturnedSchema = z.strictObject({
+  reason: optionalText(STATUS_REASON_MAX_LENGTH),
+});
+
+export type DeliveryDispatchInput = z.output<typeof deliveryDispatchSchema>;
+export type DeliveryFailedInput = z.output<typeof deliveryFailedSchema>;
+export type DeliveryReturnedInput = z.output<typeof deliveryReturnedSchema>;

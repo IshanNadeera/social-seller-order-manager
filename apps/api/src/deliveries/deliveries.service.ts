@@ -1,6 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { DELIVERY_ADDRESS_FIELDS, cents, checkOrderEdit } from '@ssom/shared';
-import type { CodStatus, DeliveryUpdateInput, EditGroup, OrderDetail } from '@ssom/shared';
+import {
+  DELIVERY_ADDRESS_FIELDS,
+  cents,
+  checkDeliveryTransition,
+  checkOrderEdit,
+  nextCodStatus,
+} from '@ssom/shared';
+import type {
+  CodStatus,
+  DeliveryStatus,
+  DeliveryUpdateInput,
+  EditGroup,
+  OrderDetail,
+  OrderStatus,
+} from '@ssom/shared';
 import type { AuthContext } from '../auth/auth-context';
 import { PrismaService } from '../common/prisma.service';
 import { tenantData, tenantWhere } from '../common/tenant';
@@ -163,4 +176,117 @@ export class DeliveriesService {
       return loadOrderDetail(tx, auth, orderId);
     });
   }
+
+  /**
+   * A delivery action (§7.2, ADR-012): dispatch, delivered, failed or returned. The transition table
+   * decides whether it is allowed; its side effects on the order and COD status happen in the same
+   * transaction, each with its event.
+   */
+  act(auth: AuthContext, orderId: string, action: DeliveryAction): Promise<OrderDetail> {
+    return this.prisma.$transaction(async (tx) => {
+      await lockOrder(tx, auth, orderId);
+      const order = await tx.order.findFirstOrThrow({
+        where: tenantWhere(auth, { id: orderId }),
+        select: { orderStatus: true, delivery: true },
+      });
+      const { delivery } = order;
+      if (delivery === null) {
+        throw refuse('NOT_A_DELIVERY_ORDER', 'This is a pickup order, so it has no delivery.');
+      }
+      const reason = action.reason ?? null;
+      const check = checkDeliveryTransition(delivery.status, action.to, {
+        orderStatus: order.orderStatus,
+        role: auth.role,
+        reason,
+      });
+      if (!check.ok) {
+        throw refuse(check.code, check.message, check.code === 'REASON_REQUIRED' ? 'reason' : undefined);
+      }
+      const rule = DELIVERY_RULE_EFFECTS[action.to];
+      const now = new Date();
+
+      // The order follows the delivery: delivered → COMPLETED, returned → RETURNED (§7.2).
+      const orderBecomes: OrderStatus | null =
+        action.to === 'DELIVERED' ? 'COMPLETED' : action.to === 'RETURNED' ? 'RETURNED' : null;
+      // COD follows too: delivered → the courier has it; returned → nothing more to collect (§7.8).
+      const codStatus =
+        rule.codTrigger === null
+          ? null
+          : nextCodStatus(delivery.codStatus, rule.codTrigger);
+
+      const data: Prisma.DeliveryUncheckedUpdateManyInput = { status: action.to };
+      if (action.to === 'DISPATCHED') {
+        data.dispatchedAt = now;
+        data.attemptCount = delivery.attemptCount + 1;
+        if (action.courierName !== undefined) data.courierName = action.courierName;
+        if (action.trackingNumber !== undefined) data.trackingNumber = action.trackingNumber;
+      }
+      if (action.to === 'DELIVERED') data.deliveredAt = now;
+      if (action.to === 'FAILED') data.failedReason = reason;
+      if (codStatus !== null) data.codStatus = codStatus;
+      await tx.delivery.updateMany({ where: tenantWhere(auth, { orderId }), data });
+
+      if (orderBecomes !== null) {
+        await tx.order.updateMany({
+          where: tenantWhere(auth, { id: orderId }),
+          data: {
+            orderStatus: orderBecomes,
+            ...(orderBecomes === 'COMPLETED' ? { completedAt: now } : {}),
+          },
+        });
+      }
+
+      // The history, in the order it happened.
+      const event = (
+        type: 'DELIVERY_STATUS_CHANGED' | 'ORDER_STATUS_CHANGED' | 'COD_STATUS_CHANGED',
+        oldValue: Prisma.InputJsonObject,
+        newValue: Prisma.InputJsonObject,
+      ) =>
+        tx.orderEvent.create({
+          data: tenantData(auth, { orderId, actorUserId: auth.userId, type, oldValue, newValue, reason }),
+        });
+      await event(
+        'DELIVERY_STATUS_CHANGED',
+        { deliveryStatus: delivery.status },
+        {
+          deliveryStatus: action.to,
+          ...(action.to === 'DISPATCHED' ? { attemptCount: delivery.attemptCount + 1 } : {}),
+          ...(action.courierName ? { courierName: action.courierName } : {}),
+          ...(action.trackingNumber ? { trackingNumber: action.trackingNumber } : {}),
+        },
+      );
+      if (orderBecomes !== null && orderBecomes !== order.orderStatus) {
+        await event('ORDER_STATUS_CHANGED', { orderStatus: order.orderStatus }, { orderStatus: orderBecomes });
+      }
+      if (codStatus !== null && codStatus !== delivery.codStatus) {
+        await event(
+          'COD_STATUS_CHANGED',
+          { codStatus: delivery.codStatus },
+          { codStatus, codAmount: delivery.codAmount.toFixed(2) },
+        );
+      }
+
+      return loadOrderDetail(tx, auth, orderId);
+    });
+  }
 }
+
+/** One delivery action, as the controller received it. */
+export type DeliveryAction = {
+  to: DeliveryStatus;
+  reason?: string | null;
+  courierName?: string | null;
+  trackingNumber?: string | null;
+};
+
+/** What each new delivery status does to COD (§7.2's COD table). */
+const DELIVERY_RULE_EFFECTS: Record<
+  DeliveryStatus,
+  { codTrigger: 'DELIVERED' | 'ORDER_CANCELLED_OR_RETURNED' | null }
+> = {
+  PENDING: { codTrigger: null },
+  DISPATCHED: { codTrigger: null },
+  DELIVERED: { codTrigger: 'DELIVERED' },
+  FAILED: { codTrigger: null },
+  RETURNED: { codTrigger: 'ORDER_CANCELLED_OR_RETURNED' },
+};

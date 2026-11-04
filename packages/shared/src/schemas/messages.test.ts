@@ -11,6 +11,9 @@ import {
   customerListQuerySchema,
   customerOrdersQuerySchema,
   customerUpdateSchema,
+  deliveryDispatchSchema,
+  deliveryFailedSchema,
+  deliveryReturnedSchema,
   deliveryUpdateSchema,
   onboardingRequestSchema,
   orderCancelSchema,
@@ -40,6 +43,9 @@ const SCHEMAS = {
   customerOrdersQuerySchema,
   paymentCreateSchema,
   deliveryUpdateSchema,
+  deliveryDispatchSchema,
+  deliveryFailedSchema,
+  deliveryReturnedSchema,
 };
 
 /** Wrong types and sizes a client could send for any field. */
