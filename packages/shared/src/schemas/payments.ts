@@ -26,7 +26,8 @@ export const paymentCreateSchema = z
   .strictObject({
     type: z.enum(PAYMENT_TYPES, { error: 'Choose payment or refund.' }),
     method: z.enum(MANUAL_PAYMENT_METHODS, {
-      error: 'Choose cash, bank transfer or other. Cash on delivery is recorded with “Mark COD settled”.',
+      error:
+        'Choose cash, bank transfer or other. Cash on delivery is recorded with “Mark COD settled”.',
     }),
     amount: moneySchema('Enter the amount.').refine((amount) => cents(amount) > 0n, {
       message: 'Enter an amount greater than 0.',
@@ -54,7 +55,11 @@ export const paymentCreateSchema = z
     const at = Date.parse(input.occurredAt);
     const now = Date.now();
     if (at > now + FUTURE_LEEWAY_MS) {
-      ctx.addIssue({ code: 'custom', path: ['occurredAt'], message: 'This date is in the future.' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['occurredAt'],
+        message: 'This date is in the future.',
+      });
     } else if (at < now - PAYMENT_BACKDATE_DAYS * DAY_MS) {
       ctx.addIssue({
         code: 'custom',

@@ -61,7 +61,11 @@ export class PaymentsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** GET /orders/:id/payments: the order's records, oldest first; 404 if the order isn't ours. */
-  async list(auth: AuthContext, orderId: string, query: PaymentListQuery): Promise<Page<PaymentView>> {
+  async list(
+    auth: AuthContext,
+    orderId: string,
+    query: PaymentListQuery,
+  ): Promise<Page<PaymentView>> {
     orNotFound(
       await this.prisma.order.findFirst({
         where: tenantWhere(auth, { id: orderId }),
@@ -153,7 +157,11 @@ export class PaymentsService {
       }
       if (input.refundOfPaymentId !== undefined) {
         const target = await tx.payment.findFirst({
-          where: tenantWhere(auth, { id: input.refundOfPaymentId, orderId, type: 'PAYMENT' as const }),
+          where: tenantWhere(auth, {
+            id: input.refundOfPaymentId,
+            orderId,
+            type: 'PAYMENT' as const,
+          }),
           select: { id: true },
         });
         if (target === null) {
@@ -202,7 +210,8 @@ export class PaymentsService {
       data: tenantData(auth, {
         orderId,
         actorUserId: auth.userId,
-        type: input.type === 'PAYMENT' ? ('PAYMENT_RECORDED' as const) : ('REFUND_RECORDED' as const),
+        type:
+          input.type === 'PAYMENT' ? ('PAYMENT_RECORDED' as const) : ('REFUND_RECORDED' as const),
         newValue: {
           paymentId: payment.id,
           amount: input.amount,

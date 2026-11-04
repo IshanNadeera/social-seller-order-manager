@@ -48,9 +48,19 @@ async function createOrder(extra: object = {}): Promise<OrderDetail> {
 
 /** A COD delivery order: 1000.00, no delivery fee, all of it on delivery. */
 const codOrder = () =>
-  createOrder({ fulfilmentType: 'DELIVERY', paymentMethod: 'COD', deliveryFee: '0', delivery: ADDRESS });
+  createOrder({
+    fulfilmentType: 'DELIVERY',
+    paymentMethod: 'COD',
+    deliveryFee: '0',
+    delivery: ADDRESS,
+  });
 
-const pay = (orderId: string, body: object, key: string = randomUUID(), tenant: Tenant = tenants.a) =>
+const pay = (
+  orderId: string,
+  body: object,
+  key: string = randomUUID(),
+  tenant: Tenant = tenants.a,
+) =>
   request(server)
     .post(`${O}/${orderId}/payments`)
     .set(auth(tenant))
@@ -79,7 +89,10 @@ beforeAll(async () => {
     .overrideProvider(JWKS)
     .useValue(testAuth.jwks)
     .compile();
-  app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false, logger: false });
+  app = moduleRef.createNestApplication<NestExpressApplication>({
+    bodyParser: false,
+    logger: false,
+  });
   configureApp(app, env);
   await app.init();
   server = app.getHttpServer();
@@ -119,7 +132,11 @@ describe('payments (§7.7)', () => {
 
     const second = (await pay(order.id, { amount: '600', method: 'BANK_TRANSFER' }).expect(201))
       .body as PaymentRecorded;
-    expect(second.order).toMatchObject({ amountPaid: '1000.00', balanceDue: '0.00', paymentStatus: 'PAID' });
+    expect(second.order).toMatchObject({
+      amountPaid: '1000.00',
+      balanceDue: '0.00',
+      paymentStatus: 'PAID',
+    });
 
     const list = (await request(server).get(`${O}/${order.id}/payments`).set(auth()).expect(200))
       .body as Page<PaymentView>;
@@ -135,7 +152,10 @@ describe('payments (§7.7)', () => {
     const order = await createOrder();
     await pay(order.id, { amount: '700' }).expect(201);
     const body = await refused(pay(order.id, { amount: '300.01' }));
-    expect(body).toMatchObject({ code: 'PAYMENT_EXCEEDS_BALANCE', fieldErrors: { amount: expect.any(String) } });
+    expect(body).toMatchObject({
+      code: 'PAYMENT_EXCEEDS_BALANCE',
+      fieldErrors: { amount: expect.any(String) },
+    });
     expect(body.fieldErrors.amount).toContain('300.00');
     expect(await paymentRows(order.id)).toHaveLength(1);
     await pay(order.id, { amount: '300' }).expect(201);
@@ -144,12 +164,16 @@ describe('payments (§7.7)', () => {
   it('allows backdating up to 90 days, not more, not the future', async () => {
     const order = await createOrder();
     const occurredAt = new Date(Date.now() - 89 * DAY).toISOString();
-    const res = (await pay(order.id, { amount: '100', occurredAt }).expect(201)).body as PaymentRecorded;
+    const res = (await pay(order.id, { amount: '100', occurredAt }).expect(201))
+      .body as PaymentRecorded;
     expect(res.payment.occurredAt).toBe(occurredAt);
     expect(new Date(res.payment.createdAt).getTime()).toBeGreaterThan(Date.now() - DAY);
 
     for (const when of [new Date(Date.now() - 91 * DAY), new Date(Date.now() + DAY)]) {
-      const body = await refused(pay(order.id, { amount: '100', occurredAt: when.toISOString() }), 400);
+      const body = await refused(
+        pay(order.id, { amount: '100', occurredAt: when.toISOString() }),
+        400,
+      );
       expect(Object.keys(body.fieldErrors)).toEqual(['occurredAt']);
     }
   });
@@ -169,38 +193,60 @@ describe('refunds (§7.7)', () => {
     const body = await refused(refund(order.id, { amount: '1000.01' }));
     expect(body.code).toBe('REFUND_EXCEEDS_PAID');
 
-    const part = (await refund(order.id, { amount: '250', refundOfPaymentId: paid.payment.id }).expect(201))
-      .body as PaymentRecorded;
+    const part = (
+      await refund(order.id, { amount: '250', refundOfPaymentId: paid.payment.id }).expect(201)
+    ).body as PaymentRecorded;
     expect(part.payment).toMatchObject({ type: 'REFUND', refundOfPaymentId: paid.payment.id });
-    expect(part.order).toMatchObject({ amountRefunded: '250.00', paymentStatus: 'PARTIALLY_REFUNDED' });
+    expect(part.order).toMatchObject({
+      amountRefunded: '250.00',
+      paymentStatus: 'PARTIALLY_REFUNDED',
+    });
 
-    expect((await refused(refund(order.id, { amount: '750.01' }))).code).toBe('REFUND_EXCEEDS_PAID');
+    expect((await refused(refund(order.id, { amount: '750.01' }))).code).toBe(
+      'REFUND_EXCEEDS_PAID',
+    );
     const all = (await refund(order.id, { amount: '750' }).expect(201)).body as PaymentRecorded;
     expect(all.order).toMatchObject({ paymentStatus: 'REFUNDED' });
-    expect((await eventsOf(order.id)).filter((event) => event.type === 'REFUND_RECORDED')).toHaveLength(2);
+    expect(
+      (await eventsOf(order.id)).filter((event) => event.type === 'REFUND_RECORDED'),
+    ).toHaveLength(2);
   });
 
   it('a refund points only at a payment of the same order', async () => {
     const order = await createOrder();
     const other = await createOrder();
-    const otherPayment = (await pay(other.id, { amount: '100' }).expect(201)).body as PaymentRecorded;
+    const otherPayment = (await pay(other.id, { amount: '100' }).expect(201))
+      .body as PaymentRecorded;
     await pay(order.id, { amount: '500' }).expect(201);
-    const firstRefund = (await refund(order.id, { amount: '10' }).expect(201)).body as PaymentRecorded;
+    const firstRefund = (await refund(order.id, { amount: '10' }).expect(201))
+      .body as PaymentRecorded;
 
     for (const target of [otherPayment.payment.id, firstRefund.payment.id, randomUUID()]) {
       const body = await refused(refund(order.id, { amount: '10', refundOfPaymentId: target }));
-      expect(body).toMatchObject({ code: 'REFUND_TARGET_INVALID', fieldErrors: { refundOfPaymentId: expect.any(String) } });
+      expect(body).toMatchObject({
+        code: 'REFUND_TARGET_INVALID',
+        fieldErrors: { refundOfPaymentId: expect.any(String) },
+      });
     }
   });
 
   it('a cancelled order takes no payments, but refunds what it holds', async () => {
     const order = await createOrder();
     await pay(order.id, { amount: '300' }).expect(201);
-    await request(server).post(`${O}/${order.id}/cancel`).set(auth()).send({ reason: 'Changed mind' }).expect(200);
+    await request(server)
+      .post(`${O}/${order.id}/cancel`)
+      .set(auth())
+      .send({ reason: 'Changed mind' })
+      .expect(200);
 
     expect((await refused(pay(order.id, { amount: '1' }))).code).toBe('ORDER_CLOSED');
-    const res = (await refund(order.id, { amount: '300', notes: 'Correction' }).expect(201)).body as PaymentRecorded;
-    expect(res.order).toMatchObject({ orderStatus: 'CANCELLED', refundOwed: '0.00', paymentStatus: 'REFUNDED' });
+    const res = (await refund(order.id, { amount: '300', notes: 'Correction' }).expect(201))
+      .body as PaymentRecorded;
+    expect(res.order).toMatchObject({
+      orderStatus: 'CANCELLED',
+      refundOwed: '0.00',
+      paymentStatus: 'REFUNDED',
+    });
   });
 });
 

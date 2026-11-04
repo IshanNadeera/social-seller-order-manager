@@ -120,7 +120,10 @@ beforeAll(async () => {
     .overrideProvider(JWKS)
     .useValue(auth.jwks)
     .compile();
-  app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false, logger: false });
+  app = moduleRef.createNestApplication<NestExpressApplication>({
+    bodyParser: false,
+    logger: false,
+  });
   configureApp(app, env);
   await app.init();
   server = app.getHttpServer();
@@ -161,7 +164,11 @@ const attacks: Attack[] = (['order', 'cancelledOrder'] as const).flatMap((which)
   {
     covers: 'PATCH /orders/:id',
     name: `edit ${which}`,
-    route: { method: 'patch', path: (id) => `${O}/${id}`, body: { notes: 'Taken', discountAmount: '1' } },
+    route: {
+      method: 'patch',
+      path: (id) => `${O}/${id}`,
+      body: { notes: 'Taken', discountAmount: '1' },
+    },
     target: (victim) => victim[which],
   },
   {
@@ -214,10 +221,14 @@ describe('IDs that are not UUIDs', () => {
 
 describe('GET /orders never shows another business’s orders', () => {
   const list = async (query: Record<string, string> = {}) =>
-    (await request(server).get(O).query(query).set(as(a.tenant)).expect(200)).body as Page<OrderSummary>;
+    (await request(server).get(O).query(query).set(as(a.tenant)).expect(200))
+      .body as Page<OrderSummary>;
 
   it('the unfiltered list holds exactly the caller’s own orders', async () => {
-    const own = await prisma.order.findMany({ where: { businessId: a.tenant.businessId }, select: { id: true } });
+    const own = await prisma.order.findMany({
+      where: { businessId: a.tenant.businessId },
+      select: { id: true },
+    });
     const page = await list({ pageSize: '100' });
     expect(page.items.map((order) => order.id).sort()).toEqual(own.map((order) => order.id).sort());
   });
@@ -294,10 +305,16 @@ describe('an order can’t point at another business’s records', () => {
 // ---------- businessId sent by the client ----------
 
 describe('a businessId from the client is refused (400), and nothing is written', () => {
-  const rejected = { code: 'VALIDATION_ERROR', fieldErrors: { businessId: 'This field is not allowed.' } };
+  const rejected = {
+    code: 'VALIDATION_ERROR',
+    fieldErrors: { businessId: 'This field is not allowed.' },
+  };
 
   it.each([
-    ['POST /orders', () => createOrder(a.tenant, { ...orderBody(a), businessId: b.tenant.businessId })],
+    [
+      'POST /orders',
+      () => createOrder(a.tenant, { ...orderBody(a), businessId: b.tenant.businessId }),
+    ],
     [
       'PATCH /orders/:id',
       () =>

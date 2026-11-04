@@ -29,7 +29,9 @@ describe('paymentCreateSchema (§7.7)', () => {
   it('allows backdating up to 90 days, not the future', () => {
     const ago = (days: number) => new Date(Date.now() - days * DAY).toISOString();
     expect(errors({ ...base, occurredAt: ago(89) })).toEqual({});
-    expect(errors({ ...base, occurredAt: ago(91) })).toEqual({ occurredAt: 'Use a date in the last 90 days.' });
+    expect(errors({ ...base, occurredAt: ago(91) })).toEqual({
+      occurredAt: 'Use a date in the last 90 days.',
+    });
     expect(errors({ ...base, occurredAt: new Date(Date.now() + DAY).toISOString() })).toEqual({
       occurredAt: 'This date is in the future.',
     });
