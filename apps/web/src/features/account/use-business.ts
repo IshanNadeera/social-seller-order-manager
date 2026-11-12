@@ -21,3 +21,8 @@ export function useBusinessCurrency(): string {
 export function useBusinessDefaultDeliveryFee(): string {
   return useMe().data?.business?.defaultDeliveryFee ?? '0.00';
 }
+
+/** The business's name, for customer messages (§6.5). */
+export function useBusinessName(): string {
+  return useMe().data?.business?.name ?? '';
+}

@@ -14,6 +14,7 @@ import { customerPaths } from '../customers/paths';
 import { useOrder, useOrderEvents } from './api';
 import { DeliveryCard } from './DeliveryCard';
 import { describeEvent } from './event-text';
+import { MessageTemplates } from './MessageTemplates';
 import { OrderActions } from './OrderActions';
 import { OrderPayments } from './OrderPayments';
 import { PaymentBadge, StageLabel } from './OrderBadges';
@@ -168,6 +169,10 @@ function OrderView({ order }: { order: OrderDetail }) {
 
       <Card title={d.sections.payment}>
         <OrderPayments order={order} />
+      </Card>
+
+      <Card title={d.sections.messages}>
+        <MessageTemplates order={order} />
       </Card>
 
       {order.notes !== null && (
