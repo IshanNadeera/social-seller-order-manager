@@ -12,6 +12,7 @@ import { strings } from '../../lib/strings';
 import { useBusinessCurrency, useBusinessTimeZone } from '../account/use-business';
 import { customerPaths } from '../customers/paths';
 import { useOrder, useOrderEvents } from './api';
+import { DeliveryCard } from './DeliveryCard';
 import { describeEvent } from './event-text';
 import { OrderActions } from './OrderActions';
 import { OrderPayments } from './OrderPayments';
@@ -90,8 +91,6 @@ function OrderView({ order }: { order: OrderDetail }) {
   const timeZone = useBusinessTimeZone();
   const money = (amount: string) => formatMoney(amount, currency);
   const { delivery, customer } = order;
-  const showCod =
-    delivery !== null && (order.paymentMethod === 'COD' || delivery.codStatus !== 'NOT_APPLICABLE');
 
   return (
     <section className="max-w-3xl space-y-5">
@@ -136,30 +135,7 @@ function OrderView({ order }: { order: OrderDetail }) {
 
       {delivery !== null && (
         <Card title={d.sections.delivery}>
-          <dl className={rows}>
-            <Row label={d.deliveryStatus}>{strings.deliveryStatus[delivery.status]}</Row>
-            <Row label={d.recipient}>{delivery.recipientName}</Row>
-            <Row label={d.phone}>{delivery.phone}</Row>
-            <Row label={d.address}>
-              {[
-                delivery.addressLine1,
-                delivery.addressLine2,
-                delivery.city,
-                delivery.district,
-                delivery.postalCode,
-              ]
-                .filter((part): part is string => part !== null && part !== '')
-                .join(', ')}
-            </Row>
-            <Row label={d.courier}>{delivery.courierName ?? d.notSet}</Row>
-            <Row label={d.tracking}>{delivery.trackingNumber ?? d.notSet}</Row>
-            {showCod && (
-              <>
-                <Row label={d.codAmount}>{money(delivery.codAmount)}</Row>
-                <Row label={d.codStatus}>{strings.codStatus[delivery.codStatus]}</Row>
-              </>
-            )}
-          </dl>
+          <DeliveryCard order={order} delivery={delivery} />
         </Card>
       )}
 

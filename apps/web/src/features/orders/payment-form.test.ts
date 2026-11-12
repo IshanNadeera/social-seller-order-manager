@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { emptyPaymentForm, localToday, paymentFormSchema, toPaymentRequest } from './payment-form';
+import {
+  codSettleFormSchema,
+  emptyCodSettleForm,
+  emptyPaymentForm,
+  localToday,
+  paymentFormSchema,
+  toCodSettleRequest,
+  toPaymentRequest,
+} from './payment-form';
 
 const TODAY = localToday();
 const daysAgo = (days: number) => localToday(new Date(Date.now() - days * 24 * 60 * 60 * 1000));
@@ -31,5 +39,19 @@ describe('payment form (§6.5, §7.7)', () => {
       method: 'BANK_TRANSFER',
     });
     expect(TODAY).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe('COD settle form (§7.7)', () => {
+  it('today means now; an earlier day is midday of that day', () => {
+    expect(toCodSettleRequest(emptyCodSettleForm())).toEqual({ settledAt: undefined, reference: '', notes: '' });
+    const earlier = toCodSettleRequest({ ...emptyCodSettleForm(), settledAt: daysAgo(2) });
+    expect(new Date(earlier.settledAt as string).getDate()).toBe(new Date(`${daysAgo(2)}T12:00:00`).getDate());
+  });
+
+  it('checks the date with the API’s own rules', () => {
+    const schema = codSettleFormSchema();
+    expect(schema.safeParse({ ...emptyCodSettleForm(), reference: 'KB 7' }).data).toEqual({ reference: 'KB 7', notes: null });
+    expect(schema.safeParse({ ...emptyCodSettleForm(), settledAt: daysAgo(120) }).success).toBe(false);
   });
 });
