@@ -101,6 +101,11 @@ function setup(
 ) {
   const api = createFakeApi({ me });
   api.on('GET', PATH, () => ({ status: 200, body: current }));
+  // The payment history (D5): empty unless a test says otherwise.
+  api.on('GET', `${PATH}/payments`, () => ({
+    status: 200,
+    body: { items: [], page: 1, pageSize: 25, total: 0 },
+  }));
   api.on('GET', `${PATH}/events`, () => ({
     status: 200,
     body: events([{ newValue: { totalAmount: '3450.00' } }]),

@@ -6,6 +6,7 @@ import type {
   OrderStatus,
   PaymentMethod,
   PaymentStatus,
+  PaymentType,
   SourceChannel,
   SriLankaDistrict,
 } from '@ssom/shared';
@@ -115,6 +116,11 @@ const codStatusLabels: Record<CodStatus, string> = {
   PENDING: 'To collect on delivery',
   COLLECTED: 'With the courier',
   SETTLED: 'Settled',
+};
+
+const paymentTypeLabels: Record<PaymentType, string> = {
+  PAYMENT: 'Payment',
+  REFUND: 'Refund',
 };
 
 export const strings = {
@@ -498,6 +504,40 @@ export const strings = {
       } satisfies Record<OrderStatus, string>,
       moving: 'Saving…',
     },
+    payments: {
+      history: 'Payments and refunds',
+      empty: 'No payments recorded yet.',
+      loadFailed: 'We couldn’t load the payments.',
+      recordPayment: 'Record payment',
+      recordRefund: 'Record refund',
+      line: (method: string, by: string) => `${method} · by ${by}`,
+      reference: (reference: string) => `Ref. ${reference}`,
+      refundOf: 'Refund of an earlier payment',
+      refundPromptTitle: (amount: string) => `Refund owed: ${amount}`,
+      refundPromptBody:
+        'This order is cancelled or returned but you still hold money for it. Record the refund once you’ve given it back.',
+      sheet: {
+        paymentTitle: 'Record a payment',
+        refundTitle: 'Record a refund',
+        amount: 'Amount',
+        paymentAmountHint: (balance: string) => `Balance due: ${balance}.`,
+        refundAmountHint: (paid: string) => `At most what the customer has paid: ${paid}.`,
+        method: 'Method',
+        chooseMethod: 'Choose how the money moved',
+        date: 'Date',
+        dateHint: 'When the money changed hands, up to 90 days ago.',
+        refundOf: 'Refund of (optional)',
+        refundOfNone: 'Not linked to one payment',
+        refundOfOption: (date: string, amount: string) => `${date}: ${amount}`,
+        reference: 'Reference (optional)',
+        referenceHint: 'A receipt or bank transfer number.',
+        notes: 'Notes (optional)',
+        notesHint: 'For a correction, say so here.',
+        submitPayment: 'Save payment',
+        submitRefund: 'Save refund',
+        pending: 'Saving…',
+      },
+    },
     reasonSheet: {
       cancelTitle: (orderNumber: string) => `Cancel ${orderNumber}?`,
       cancelBody:
@@ -663,5 +703,6 @@ export const strings = {
   paymentStatus: paymentStatusLabels,
   deliveryStatus: deliveryStatusLabels,
   codStatus: codStatusLabels,
+  paymentType: paymentTypeLabels,
   district: districtLabels,
 } as const;

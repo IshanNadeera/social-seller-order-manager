@@ -5,6 +5,7 @@ import type {
   OrderEventView,
   OrderSummary,
   Page,
+  PaymentView,
   ProductView,
 } from '@ssom/shared';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -24,6 +25,7 @@ export const orderKeys = {
     ['orders', businessId, 'list', params] as const,
   detail: (businessId: string, id: string) => ['orders', businessId, 'detail', id] as const,
   events: (businessId: string, id: string) => ['orders', businessId, 'events', id] as const,
+  payments: (businessId: string, id: string) => ['orders', businessId, 'payments', id] as const,
   /** One customer's order history (§6.6). */
   customer: (businessId: string, customerId: string) =>
     ['orders', businessId, 'customer', customerId] as const,
@@ -75,6 +77,24 @@ export function useOrderEvents(id: string, page: number) {
   });
 }
 
+/** Payment records per page on the order page. */
+export const PAYMENTS_PAGE_SIZE = 25;
+
+/** GET /orders/:id/payments: payments and refunds, oldest first (§6.5). */
+export function useOrderPayments(id: string, page: number) {
+  const api = useApi();
+  const businessId = useBusinessId();
+  return useQuery({
+    queryKey: [...orderKeys.payments(businessId, id), page],
+    queryFn: ({ signal }) =>
+      api.get<Page<PaymentView>>(
+        `/orders/${encodeURIComponent(id)}/payments?page=${page}&pageSize=${PAYMENTS_PAGE_SIZE}`,
+        { signal },
+      ),
+    placeholderData: keepPreviousData,
+  });
+}
+
 /**
  * After a change: cache the order the API returned (every order action answers with the whole
  * order), and refetch its activity and the lists, whose stage or totals may have changed.
@@ -85,6 +105,7 @@ export function useOrderSaved() {
   return (order: OrderDetail) => {
     queryClient.setQueryData(orderKeys.detail(businessId, order.id), order);
     void queryClient.invalidateQueries({ queryKey: orderKeys.events(businessId, order.id) });
+    void queryClient.invalidateQueries({ queryKey: orderKeys.payments(businessId, order.id) });
     void queryClient.invalidateQueries({ queryKey: [...orderKeys.all(businessId), 'list'] });
     void queryClient.invalidateQueries({ queryKey: [...orderKeys.all(businessId), 'customer'] });
   };

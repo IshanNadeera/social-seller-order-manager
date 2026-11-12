@@ -14,6 +14,7 @@ import { customerPaths } from '../customers/paths';
 import { useOrder, useOrderEvents } from './api';
 import { describeEvent } from './event-text';
 import { OrderActions } from './OrderActions';
+import { OrderPayments } from './OrderPayments';
 import { PaymentBadge, StageLabel } from './OrderBadges';
 
 const d = strings.orders.detail;
@@ -190,20 +191,7 @@ function OrderView({ order }: { order: OrderDetail }) {
       </Card>
 
       <Card title={d.sections.payment}>
-        <dl className={rows}>
-          <Row label={d.paymentMethod}>{strings.paymentMethod[order.paymentMethod]}</Row>
-          <Row label={d.total}>{money(order.totalAmount)}</Row>
-          <Row label={d.paid}>{money(order.amountPaid)}</Row>
-          <Row label={d.refunded}>{money(order.amountRefunded)}</Row>
-          <Row label={d.balance}>
-            <span className="font-semibold">{money(order.balanceDue)}</span>
-          </Row>
-          {order.refundOwed !== '0.00' && (
-            <Row label={d.refundOwed}>
-              <span className="font-semibold text-red-800">{money(order.refundOwed)}</span>
-            </Row>
-          )}
-        </dl>
+        <OrderPayments order={order} />
       </Card>
 
       {order.notes !== null && (

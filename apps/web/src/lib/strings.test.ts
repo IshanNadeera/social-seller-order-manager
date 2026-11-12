@@ -6,6 +6,7 @@ import {
   ORDER_STATUSES,
   PAYMENT_METHODS,
   PAYMENT_STATUSES,
+  PAYMENT_TYPES,
   SOURCE_CHANNELS,
   SRI_LANKA_DISTRICTS,
 } from '@ssom/shared';
@@ -46,6 +47,7 @@ describe('status labels', () => {
     ['payment status', PAYMENT_STATUSES, strings.paymentStatus],
     ['delivery status', DELIVERY_STATUSES, strings.deliveryStatus],
     ['COD status', COD_STATUSES, strings.codStatus],
+    ['payment type', PAYMENT_TYPES, strings.paymentType],
     ['status action', ORDER_STATUSES, strings.orders.detail.move],
   ] as const;
 
