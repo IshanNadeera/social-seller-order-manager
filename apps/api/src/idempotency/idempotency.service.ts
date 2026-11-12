@@ -42,6 +42,8 @@ export class IdempotencyService {
     request: IdempotentRequest,
     work: (tx: Prisma.TransactionClient) => Promise<Body>,
     status = 201,
+    /** A longer limit for work that touches many rows (bulk COD settle); Prisma's default is 5 s. */
+    options: { timeoutMs?: number } = {},
   ): Promise<IdempotentResult<Body>> {
     const hash = requestHash(request.endpoint, request.payload);
     const id = { businessId_key: { businessId: auth.businessId, key: request.key } };
@@ -72,7 +74,7 @@ export class IdempotencyService {
         data: { responseStatus: status, responseBody: body as Prisma.InputJsonValue },
       });
       return { status, body, replayed: false };
-    });
+    }, options.timeoutMs === undefined ? undefined : { timeout: options.timeoutMs });
   }
 
   /** Deletes stored responses older than the retention period (for the scheduled clean-up job). */

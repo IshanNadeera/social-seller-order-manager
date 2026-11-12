@@ -617,6 +617,38 @@ export const strings = {
       balanceAtCollection: (amount: string) => `Balance to pay when you collect: ${amount}`,
       signOff: (business: string) => `Thank you, ${business}`,
     },
+    cod: {
+      title: 'COD to settle',
+      intro:
+        'Cash on delivery your couriers have collected but not yet paid to you. When a courier pays you, tick the orders it covers and mark them settled together.',
+      openLink: 'COD to settle',
+      back: 'All orders',
+      loadFailed: 'We couldn’t load the COD awaiting settlement.',
+      emptyTitle: 'Nothing to settle',
+      emptyBody: 'When a delivered COD order’s money is still with the courier, it shows here.',
+      courier: 'Courier',
+      noCourier: 'No courier recorded',
+      listLabel: 'COD awaiting settlement',
+      selectAll: 'Select all',
+      row: (orderNumber: string, recipient: string) => `${orderNumber} · ${recipient}`,
+      tracking: (tracking: string) => `Tracking ${tracking}`,
+      delivered: (date: string) => `Delivered ${date}`,
+      view: 'View order',
+      selected: (count: number, total: string) =>
+        count === 1 ? `1 order selected · ${total}` : `${count} orders selected · ${total}`,
+      settle: 'Mark settled',
+      more: (shown: number, total: number) =>
+        `Showing ${shown} of ${total}. Settle these and the rest will appear.`,
+      done: (count: number, total: string) =>
+        count === 1 ? `1 order settled: ${total}.` : `${count} orders settled: ${total}.`,
+      sheet: {
+        title: 'Mark COD settled',
+        body: (count: number, courier: string, total: string) =>
+          `${count === 1 ? '1 order' : `${count} orders`} from ${courier}, ${total} in all. Each gets its own COD payment. If any order can’t be settled, none is.`,
+        submit: 'Mark settled',
+        pending: 'Saving…',
+      },
+    },
     reasonSheet: {
       cancelTitle: (orderNumber: string) => `Cancel ${orderNumber}?`,
       cancelBody:

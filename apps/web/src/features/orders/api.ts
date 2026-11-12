@@ -1,5 +1,6 @@
 // Data the order form needs (docs/DEVELOPMENT.md §6.4, §9.2–§9.4), through TanStack Query.
 import type {
+  CodAwaitingItem,
   CustomerSummary,
   OrderDetail,
   OrderEventView,
@@ -30,6 +31,27 @@ export const orderKeys = {
   customer: (businessId: string, customerId: string) =>
     ['orders', businessId, 'customer', customerId] as const,
 };
+
+/** COD the couriers still hold (§2.2). Settling or delivering anything changes it. */
+export const codKeys = {
+  all: (businessId: string) => ['cod', businessId] as const,
+};
+
+/** Orders shown at once on "COD to settle": the most one remittance can settle. */
+export const COD_AWAITING_PAGE_SIZE = 50;
+
+/** GET /cod/awaiting: by courier, oldest delivery first. */
+export function useCodAwaiting() {
+  const api = useApi();
+  const businessId = useBusinessId();
+  return useQuery({
+    queryKey: [...codKeys.all(businessId), 'awaiting'],
+    queryFn: ({ signal }) =>
+      api.get<Page<CodAwaitingItem>>(`/cod/awaiting?page=1&pageSize=${COD_AWAITING_PAGE_SIZE}`, {
+        signal,
+      }),
+  });
+}
 
 /** Orders per page in a customer's order history. */
 export const CUSTOMER_ORDERS_PAGE_SIZE = 10;
@@ -108,6 +130,7 @@ export function useOrderSaved() {
     void queryClient.invalidateQueries({ queryKey: orderKeys.payments(businessId, order.id) });
     void queryClient.invalidateQueries({ queryKey: [...orderKeys.all(businessId), 'list'] });
     void queryClient.invalidateQueries({ queryKey: [...orderKeys.all(businessId), 'customer'] });
+    void queryClient.invalidateQueries({ queryKey: codKeys.all(businessId) });
   };
 }
 

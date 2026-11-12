@@ -12,6 +12,7 @@ import { CustomerCreatePage, CustomerEditPage } from '../features/customers/Cust
 import { CustomersListPage } from '../features/customers/CustomersListPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { OnboardingPage } from '../features/onboarding/OnboardingPage';
+import { CodSettlePage } from '../features/orders/CodSettlePage';
 import { OrderCreatePage } from '../features/orders/OrderCreatePage';
 import { OrderDetailPage } from '../features/orders/OrderDetailPage';
 import { OrdersListPage } from '../features/orders/OrdersListPage';
@@ -68,6 +69,7 @@ export const routes: RouteObject[] = [
               { path: 'orders', element: <OrdersListPage /> },
               { path: 'orders/new', element: <OrderCreatePage /> },
               { path: 'orders/:orderId', element: <OrderDetailPage /> },
+              { path: 'cod', element: <CodSettlePage /> },
               { path: 'customers', element: <CustomersListPage /> },
               { path: 'customers/new', element: <CustomerCreatePage /> },
               { path: 'customers/:customerId', element: <CustomerDetailPage /> },

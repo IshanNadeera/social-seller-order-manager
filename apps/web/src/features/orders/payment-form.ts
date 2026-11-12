@@ -2,8 +2,9 @@
 // toPaymentRequest() turns it into the POST /orders/:id/payments body, which the shared
 // paymentCreateSchema checks, the same schema the API uses. Field names match the request, so the
 // API's field errors land on the right field.
-import { codSettleSchema, paymentCreateSchema } from '@ssom/shared';
+import { codBulkSettleSchema, codSettleSchema, paymentCreateSchema } from '@ssom/shared';
 import type {
+  CodBulkSettleInput,
   CodSettleInput,
   ManualPaymentMethod,
   PaymentCreateInput,
@@ -100,4 +101,12 @@ export function codSettleFormSchema() {
     (values) => toCodSettleRequest(values as CodSettleFormValues),
     codSettleSchema,
   ) as unknown as z.ZodType<CodSettleInput, CodSettleFormValues>;
+}
+
+/** The bulk settle form (§2.2): the same fields, for the chosen orders, against POST /cod/settle. */
+export function codBulkSettleFormSchema(orderIds: string[]) {
+  return z.preprocess(
+    (values) => ({ orderIds, ...toCodSettleRequest(values as CodSettleFormValues) }),
+    codBulkSettleSchema,
+  ) as unknown as z.ZodType<CodBulkSettleInput, CodSettleFormValues>;
 }

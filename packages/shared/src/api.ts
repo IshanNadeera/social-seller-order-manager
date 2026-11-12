@@ -215,6 +215,23 @@ export interface PaymentView {
   recordedBy: { id: string; name: string };
 }
 
+/** A row of GET /cod/awaiting: a delivered COD order whose money is still with the courier. */
+export interface CodAwaitingItem {
+  orderId: string;
+  orderNumber: string;
+  recipientName: string;
+  courierName: string | null;
+  trackingNumber: string | null;
+  codAmount: string;
+  deliveredAt: string | null;
+}
+
+/** POST /cod/settle: one COD payment per order, and their sum. */
+export interface CodBulkSettled {
+  settled: { orderId: string; orderNumber: string; paymentId: string; amount: string }[];
+  totalAmount: string;
+}
+
 /** POST /orders/:id/payments: the new record and the order with its recalculated summary. */
 export interface PaymentRecorded {
   payment: PaymentView;

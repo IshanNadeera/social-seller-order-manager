@@ -1,6 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { cents, nextCodStatus } from '@ssom/shared';
 import type {
+  CodAwaitingItem,
+  CodAwaitingQuery,
+  CodBulkSettled,
+  CodBulkSettleInput,
   CodSettleInput,
   CodStatus,
   Page,
@@ -11,7 +15,7 @@ import type {
 } from '@ssom/shared';
 import type { AuthContext } from '../auth/auth-context';
 import { PrismaService } from '../common/prisma.service';
-import { orNotFound, tenantData, tenantWhere } from '../common/tenant';
+import { notFound, orNotFound, tenantData, tenantWhere } from '../common/tenant';
 import type { Prisma } from '../generated/prisma/client';
 import { refuse } from '../orders/order-errors';
 import { lockOrder } from '../orders/order-lock';
@@ -249,6 +253,106 @@ export class PaymentsService {
     orderId: string,
     input: CodSettleInput,
   ): Promise<PaymentRecorded> {
+    const payment = await this.settleOne(tx, auth, orderId, input);
+    return { payment, order: await loadOrderDetail(tx, auth, orderId) };
+  }
+
+  /**
+   * GET /cod/awaiting (§2.2): delivered COD orders whose money is still with the courier, grouped
+   * by courier (orders with no courier last), oldest delivery first.
+   */
+  async awaitingCod(auth: AuthContext, query: CodAwaitingQuery): Promise<Page<CodAwaitingItem>> {
+    const where = tenantWhere(auth, { codStatus: 'COLLECTED' as const });
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.delivery.count({ where }),
+      this.prisma.delivery.findMany({
+        where,
+        orderBy: [
+          { courierName: { sort: 'asc', nulls: 'last' } },
+          { deliveredAt: 'asc' },
+          { orderId: 'asc' },
+        ],
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+        select: {
+          orderId: true,
+          recipientName: true,
+          courierName: true,
+          trackingNumber: true,
+          codAmount: true,
+          deliveredAt: true,
+          order: { select: { orderNumber: true } },
+        },
+      }),
+    ]);
+    return {
+      items: rows.map((row) => ({
+        orderId: row.orderId,
+        orderNumber: row.order.orderNumber,
+        recipientName: row.recipientName,
+        courierName: row.courierName,
+        trackingNumber: row.trackingNumber,
+        codAmount: row.codAmount.toFixed(2),
+        deliveredAt: row.deliveredAt?.toISOString() ?? null,
+      })),
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+    };
+  }
+
+  /**
+   * POST /cod/settle (§9.4, §2.2), in `tx` (the controller's idempotent transaction): one courier
+   * remittance for several orders. Each order goes through the same checks as a single settle and
+   * gets its own COD payment; the first refusal rolls everything back, so it is all or nothing.
+   * Orders are locked in id order, so two overlapping settles can't deadlock.
+   */
+  async settleCodBulk(tx: Tx, auth: AuthContext, input: CodBulkSettleInput): Promise<CodBulkSettled> {
+    // The same date, reference and notes go on every order's COD payment.
+    const { orderIds, ...one } = input;
+    const orders = await tx.order.findMany({
+      where: tenantWhere(auth, { id: { in: orderIds } }),
+      select: { id: true, orderNumber: true },
+    });
+    // Another business's order (or a wrong id) is "not found", as everywhere else (§12.4).
+    if (orders.length !== orderIds.length) throw notFound();
+    orders.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+    const settled: CodBulkSettled['settled'] = [];
+    let total = 0n;
+    for (const order of orders) {
+      try {
+        const payment = await this.settleOne(tx, auth, order.id, one);
+        settled.push({
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          paymentId: payment.id,
+          amount: payment.amount,
+        });
+        total += cents(payment.amount);
+      } catch (error) {
+        // Say which order stopped the remittance; the code and field stay the same.
+        if (!(error instanceof UnprocessableEntityException)) throw error;
+        const body = error.getResponse() as { code: string; message: string; fieldErrors: object };
+        throw refuse(
+          body.code,
+          `${order.orderNumber}: ${body.message}`,
+          Object.keys(body.fieldErrors)[0],
+        );
+      }
+    }
+    // Shown in the order the seller chose them.
+    settled.sort((a, b) => orderIds.indexOf(a.orderId) - orderIds.indexOf(b.orderId));
+    return { settled, totalAmount: fromCents(total) };
+  }
+
+  /** One COLLECTED → SETTLED, with its COD payment and events (the checks are described above). */
+  private async settleOne(
+    tx: Tx,
+    auth: AuthContext,
+    orderId: string,
+    input: CodSettleInput,
+  ): Promise<PaymentView> {
     await lockOrder(tx, auth, orderId);
     const order = await tx.order.findFirstOrThrow({
       where: tenantWhere(auth, { id: orderId }),
@@ -256,10 +360,7 @@ export class PaymentsService {
     });
     const { delivery } = order;
     if (delivery === null) {
-      throw refuse(
-        'NOT_A_DELIVERY_ORDER',
-        'This is a pickup order, so it has no cash on delivery.',
-      );
+      throw refuse('NOT_A_DELIVERY_ORDER', 'This is a pickup order, so it has no cash on delivery.');
     }
     const settled = nextCodStatus(delivery.codStatus, 'SETTLED');
     if (settled === null) {
@@ -333,6 +434,6 @@ export class PaymentsService {
       }),
     });
 
-    return { payment: toView(payment), order: await loadOrderDetail(tx, auth, orderId) };
+    return toView(payment);
   }
 }

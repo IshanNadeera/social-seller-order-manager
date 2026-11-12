@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  codBulkSettleFormSchema,
   codSettleFormSchema,
   emptyCodSettleForm,
   emptyPaymentForm,
@@ -53,5 +54,14 @@ describe('COD settle form (§7.7)', () => {
     const schema = codSettleFormSchema();
     expect(schema.safeParse({ ...emptyCodSettleForm(), reference: 'KB 7' }).data).toEqual({ reference: 'KB 7', notes: null });
     expect(schema.safeParse({ ...emptyCodSettleForm(), settledAt: daysAgo(120) }).success).toBe(false);
+  });
+});
+
+describe('bulk COD settle form (§2.2)', () => {
+  it('sends the chosen orders with the date and reference', () => {
+    const ids = ['0f1e2d3c-4b5a-4968-8776-5a4b3c2d1e01', '0f1e2d3c-4b5a-4968-8776-5a4b3c2d1e02'];
+    const parsed = codBulkSettleFormSchema(ids).safeParse({ ...emptyCodSettleForm(), reference: 'Domex 12' });
+    expect(parsed.data).toEqual({ orderIds: ids, reference: 'Domex 12', notes: null });
+    expect(codBulkSettleFormSchema([]).safeParse(emptyCodSettleForm()).success).toBe(false);
   });
 });

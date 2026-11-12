@@ -101,3 +101,41 @@ export const codSettleSchema = z
 
 export type CodSettleRequest = z.input<typeof codSettleSchema>;
 export type CodSettleInput = z.output<typeof codSettleSchema>;
+
+/** Orders one bulk settle can take: one courier remittance (§2.2), kept to one short transaction. */
+export const COD_BULK_MAX_ORDERS = 50;
+
+/**
+ * POST /cod/settle (§9.4, §2.2): one courier remittance covering several orders. All of them are
+ * settled, each with its own COD payment, or none is.
+ */
+export const codBulkSettleSchema = z
+  .strictObject({
+    orderIds: z
+      .array(z.uuid({ error: 'Choose orders from the list.' }), {
+        error: 'Choose the orders the courier paid for.',
+      })
+      .min(1, 'Choose at least one order.')
+      .max(COD_BULK_MAX_ORDERS, `Settle at most ${COD_BULK_MAX_ORDERS} orders at a time.`)
+      .refine((ids) => new Set(ids).size === ids.length, {
+        message: 'Each order can be chosen only once.',
+        when: (payload) => payload.issues.length === 0,
+      }),
+    settledAt: z.iso
+      .datetime({ offset: true, error: 'Enter when the courier paid you, as a date and time.' })
+      .optional(),
+    reference: optionalText(PAYMENT_REFERENCE_MAX_LENGTH),
+    notes: optionalText(PAYMENT_NOTES_MAX_LENGTH),
+  })
+  .superRefine((input, ctx) => checkMoneyDate(input.settledAt, ['settledAt'], ctx));
+
+export type CodBulkSettleRequest = z.input<typeof codBulkSettleSchema>;
+export type CodBulkSettleInput = z.output<typeof codBulkSettleSchema>;
+
+/** GET /cod/awaiting: COD the couriers have collected and not yet paid over, in pages. */
+export const codAwaitingQuerySchema = z.strictObject({
+  page: searchListQueryFields.page,
+  pageSize: searchListQueryFields.pageSize,
+});
+
+export type CodAwaitingQuery = z.output<typeof codAwaitingQuerySchema>;

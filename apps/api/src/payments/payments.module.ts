@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { IdempotencyModule } from '../idempotency/idempotency.module';
+import { CodBulkController } from './cod-bulk.controller';
 import { CodController } from './cod.controller';
 import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
@@ -7,7 +8,7 @@ import { PaymentsService } from './payments.service';
 /** Payments and refunds (§7.7), and settling cash on delivery (§7.8). */
 @Module({
   imports: [IdempotencyModule],
-  controllers: [PaymentsController, CodController],
+  controllers: [PaymentsController, CodController, CodBulkController],
   providers: [PaymentsService],
 })
 export class PaymentsModule {}

@@ -23,6 +23,7 @@ import type { OrderListParams } from './order-list-params';
 const s = strings.orders.list;
 const orderPath = (id: string) => `/orders/${encodeURIComponent(id)}`;
 const NEW_ORDER_PATH = '/orders/new';
+const COD_PATH = '/cod';
 
 /**
  * /orders (docs/DEVELOPMENT.md §6.3): search, filters, server-side pages (newest first), cards on
@@ -50,9 +51,14 @@ export function OrdersListPage() {
     <section className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">{s.title}</h1>
-        <Link to={NEW_ORDER_PATH} className={buttonClass.primary}>
-          {s.add}
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link to={COD_PATH} className={buttonClass.secondary}>
+            {strings.orders.cod.openLink}
+          </Link>
+          <Link to={NEW_ORDER_PATH} className={buttonClass.primary}>
+            {s.add}
+          </Link>
+        </div>
       </div>
 
       <SearchBox
