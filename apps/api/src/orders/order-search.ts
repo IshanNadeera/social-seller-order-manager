@@ -15,7 +15,8 @@ import type { Prisma } from '../generated/prisma/client';
  */
 export function orderListWhere(
   scope: TenantScope,
-  query: OrderListQuery,
+  // The list's search and filters; paging is not needed here (the CSV export has none).
+  query: Omit<OrderListQuery, 'page' | 'pageSize'>,
   timeZone: string,
 ): Prisma.OrderWhereInput & { businessId: string } {
   const filters: Prisma.OrderWhereInput[] = [];

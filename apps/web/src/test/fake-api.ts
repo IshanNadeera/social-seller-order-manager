@@ -15,7 +15,10 @@ export interface RecordedCall {
 
 export interface FakeReply {
   status: number;
+  /** Sent as JSON. */
   body?: unknown;
+  /** Sent as is instead, with this content type (a CSV file, say). */
+  text?: { content: string; contentType: string };
 }
 
 type Handler = (call: RecordedCall) => FakeReply | Promise<FakeReply>;
@@ -81,6 +84,12 @@ export function createFakeApi(options: { me?: MeResponse } = {}) {
       handlers.get(`${call.method} ${call.path}`) ??
       handlers.get(`${call.method} ${call.path.split('?')[0] ?? call.path}`);
     const reply = handler ? await handler(call) : errorReply(404, 'NOT_FOUND', 'Not found.');
+    if (reply.text !== undefined) {
+      return new Response(reply.text.content, {
+        status: reply.status,
+        headers: { 'Content-Type': reply.text.contentType, 'X-Request-Id': TEST_REQUEST_ID },
+      });
+    }
     return new Response(reply.body === undefined ? null : JSON.stringify(reply.body), {
       status: reply.status,
       headers: { 'Content-Type': 'application/json', 'X-Request-Id': TEST_REQUEST_ID },

@@ -8,6 +8,7 @@ import { PrismaModule } from './common/prisma.module';
 import { CustomersModule } from './customers/customers.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
+import { ExportsModule } from './exports/exports.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -33,6 +34,7 @@ export class AppModule {
         DeliveriesModule,
         DashboardModule,
         ReportsModule,
+        ExportsModule,
       ],
     };
   }

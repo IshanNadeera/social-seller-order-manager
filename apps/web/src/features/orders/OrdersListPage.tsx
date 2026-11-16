@@ -16,6 +16,7 @@ import { formatMoney } from '../../lib/money';
 import { strings } from '../../lib/strings';
 import { useBusinessCurrency, useBusinessTimeZone } from '../account/use-business';
 import { useOrderList } from './api';
+import { ExportOrders } from './ExportOrders';
 import { PaymentBadge, StageLabel } from './OrderBadges';
 import { hasOrderFilters, useOrderListParams } from './order-list-params';
 import type { OrderListParams } from './order-list-params';
@@ -73,6 +74,7 @@ export function OrdersListPage() {
           {s.clearFilters}
         </button>
       )}
+      <ExportOrders params={params} filtered={filtered} />
 
       <div aria-busy={list.isFetching || undefined} className="space-y-4">
         {list.data === undefined ? (

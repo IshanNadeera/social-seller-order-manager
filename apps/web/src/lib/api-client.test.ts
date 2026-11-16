@@ -195,3 +195,37 @@ describe('API client', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 });
+
+describe('download', () => {
+  it('returns the file as a Blob, with the token sent', async () => {
+    const { api, sent } = setup(
+      () =>
+        new Response('\uFEFFOrder number\r\nNIM-0001\r\n', {
+          status: 200,
+          headers: { 'Content-Type': 'text/csv; charset=utf-8' },
+        }),
+    );
+    const blob = await api.download('/exports/orders.csv?q=NIM');
+    // Byte for byte, as plain numbers: Blob.text() would drop the byte-order mark Excel needs,
+    // and typed arrays from jsdom and Node never compare equal even with the same bytes.
+    expect(Array.from(new Uint8Array(await blob.arrayBuffer()))).toEqual(
+      Array.from(new TextEncoder().encode('\uFEFFOrder number\r\nNIM-0001\r\n')),
+    );
+    expect(sent().url).toBe(`${BASE}/exports/orders.csv?q=NIM`);
+    expect(sent().headers.Authorization).toBe('Bearer test-access-token');
+  });
+
+  it('turns an error body into an ApiError, as for other requests', async () => {
+    const { api } = setup(() =>
+      json(429, {
+        code: 'EXPORT_RATE_LIMITED',
+        message: 'Please try again in 50 minutes.',
+        fieldErrors: {},
+      }),
+    );
+    const error = await caught(api.download('/exports/orders.csv'));
+    expect(error.status).toBe(429);
+    expect(error.code).toBe('EXPORT_RATE_LIMITED');
+    expect(error.message).toBe('Please try again in 50 minutes.');
+  });
+});

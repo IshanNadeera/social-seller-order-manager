@@ -38,6 +38,8 @@ export interface ApiClient {
   post<T>(path: string, body: unknown, options?: RequestOptions): Promise<T>;
   patch<T>(path: string, body: unknown, options?: RequestOptions): Promise<T>;
   delete<T>(path: string, options?: RequestOptions): Promise<T>;
+  /** GET a file (such as a CSV export) as a Blob; errors arrive as for any other request. */
+  download(path: string, options?: RequestOptions): Promise<Blob>;
 }
 
 export interface ApiClientConfig {
@@ -96,6 +98,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     path: string,
     body: unknown,
     options: RequestOptions = {},
+    read: 'json' | 'blob' = 'json',
   ): Promise<T> {
     if (!path.startsWith('/')) throw new Error(`API paths start with "/": ${path}`);
 
@@ -109,7 +112,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     if (!token) throw new ApiError(401, 'NOT_SIGNED_IN', m.unauthorized);
 
     const headers: Record<string, string> = {
-      Accept: 'application/json',
+      Accept: read === 'blob' ? '*/*' : 'application/json',
       Authorization: `Bearer ${token}`,
     };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -147,6 +150,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
 
     const headerRequestId = response.headers.get('X-Request-Id');
     if (response.status === 204) return undefined as T;
+    if (response.ok && read === 'blob') return (await response.blob()) as T;
     const parsed: unknown = await response.json().catch(() => null);
     if (response.ok) return parsed as T;
 
@@ -169,5 +173,6 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     post: (path, body, options) => request('POST', path, body, options),
     patch: (path, body, options) => request('PATCH', path, body, options),
     delete: (path, options) => request('DELETE', path, undefined, options),
+    download: (path, options) => request<Blob>('GET', path, undefined, options, 'blob'),
   };
 }

@@ -70,6 +70,12 @@ export function orderListQuery(params: OrderListParams): string {
   return query.toString();
 }
 
+/** GET /exports/orders.csv with the list's search and filters (all matching orders, no page). */
+export function orderExportApiPath(params: OrderListParams): string {
+  const query = orderListQuery({ ...params, page: 1 });
+  return query === '' ? '/exports/orders.csv' : `/exports/orders.csv?${query}`;
+}
+
 /** GET /orders for these params, e.g. /orders?orderStatus=READY&from=2026-10-01. */
 export function orderListApiPath(params: OrderListParams): string {
   const query = orderListQuery(params);
