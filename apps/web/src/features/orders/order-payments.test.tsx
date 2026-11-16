@@ -32,7 +32,15 @@ function order(overrides: Partial<OrderDetail> = {}): OrderDetail {
     paymentMethod: 'CASH',
     customer: { id: null, name: 'Walk-in customer', phone: null },
     items: [
-      { id: 'i1', productId: null, name: 'Silk Saree', sku: null, quantity: 1, unitPrice: '3450.00', lineTotal: '3450.00' },
+      {
+        id: 'i1',
+        productId: null,
+        name: 'Silk Saree',
+        sku: null,
+        quantity: 1,
+        unitPrice: '3450.00',
+        lineTotal: '3450.00',
+      },
     ],
     subtotal: '3450.00',
     discountAmount: '0.00',
@@ -66,12 +74,24 @@ function payment(overrides: Partial<PaymentView> = {}): PaymentView {
   };
 }
 
-const page = (items: PaymentView[]): Page<PaymentView> => ({ items, page: 1, pageSize: 25, total: items.length });
+const page = (items: PaymentView[]): Page<PaymentView> => ({
+  items,
+  page: 1,
+  pageSize: 25,
+  total: items.length,
+});
 
-function setup(current: OrderDetail, history: PaymentView[], configure: (api: FakeApi) => void = () => {}) {
+function setup(
+  current: OrderDetail,
+  history: PaymentView[],
+  configure: (api: FakeApi) => void = () => {},
+) {
   const api = createFakeApi();
   api.on('GET', PATH, () => ({ status: 200, body: current }));
-  api.on('GET', `${PATH}/events`, () => ({ status: 200, body: { items: [], page: 1, pageSize: 25, total: 0 } }));
+  api.on('GET', `${PATH}/events`, () => ({
+    status: 200,
+    body: { items: [], page: 1, pageSize: 25, total: 0 },
+  }));
   api.on('GET', `${PATH}/payments`, () => ({ status: 200, body: page(history) }));
   configure(api);
   renderApp(PATH, createFakeAuth(fakeSession()), api);
@@ -88,10 +108,25 @@ const sheet = async (title: string) => within(await screen.findByRole('dialog', 
 
 describe('payment summary and history (§6.5)', () => {
   it('shows total, paid, refunded and balance, and every record with method, who and reference', async () => {
-    setup(order({ amountRefunded: '200.00', balanceDue: '2650.00', paymentStatus: 'PARTIALLY_REFUNDED' }), [
-      payment(),
-      payment({ id: 'r1', type: 'REFUND', method: 'CASH', amount: '200.00', reference: null, refundOfPaymentId: PAYMENT_ID, notes: 'Correction' }),
-    ]);
+    setup(
+      order({
+        amountRefunded: '200.00',
+        balanceDue: '2650.00',
+        paymentStatus: 'PARTIALLY_REFUNDED',
+      }),
+      [
+        payment(),
+        payment({
+          id: 'r1',
+          type: 'REFUND',
+          method: 'CASH',
+          amount: '200.00',
+          reference: null,
+          refundOfPaymentId: PAYMENT_ID,
+          notes: 'Correction',
+        }),
+      ],
+    );
     const history = within(await screen.findByRole('list', { name: p.history }));
     const [paid, refunded] = history.getAllByRole('listitem');
     expect(paid).toHaveTextContent(strings.paymentType.PAYMENT);
@@ -120,10 +155,15 @@ describe('recording a payment (§7.7)', () => {
     const { api } = setup(order(), [payment()], (api) =>
       api.on('POST', `${PATH}/payments`, () => ({
         status: 201,
-        body: { payment: payment({ id: 'p2', amount: '2450.00' }), order: paid } satisfies PaymentRecorded,
+        body: {
+          payment: payment({ id: 'p2', amount: '2450.00' }),
+          order: paid,
+        } satisfies PaymentRecorded,
       })),
     );
-    await userEvent.click(await (await loadedPaymentSection()).findByRole('button', { name: p.recordPayment }));
+    await userEvent.click(
+      await (await loadedPaymentSection()).findByRole('button', { name: p.recordPayment }),
+    );
     const form = await sheet(s.paymentTitle);
     expect(form.getByLabelText(s.amount)).toHaveValue('2450.00');
     // COD can't be chosen by hand: it is recorded by settling it.
@@ -135,21 +175,39 @@ describe('recording a payment (§7.7)', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     const [post] = posts(api) as [RecordedCall];
     expect(post.headers['Idempotency-Key']).toMatch(UUID);
-    expect(post.body).toEqual({ type: 'PAYMENT', method: 'BANK_TRANSFER', amount: '2450.00', reference: 'BOC 456', notes: null });
+    expect(post.body).toEqual({
+      type: 'PAYMENT',
+      method: 'BANK_TRANSFER',
+      amount: '2450.00',
+      reference: 'BOC 456',
+      notes: null,
+    });
     // Paid in full: the summary says so and there is nothing left to record.
     await waitFor(() =>
-      expect(paymentSection().getByText(d.balance).nextElementSibling).toHaveTextContent('LKR 0.00'),
+      expect(paymentSection().getByText(d.balance).nextElementSibling).toHaveTextContent(
+        'LKR 0.00',
+      ),
     );
-    expect(paymentSection().queryByRole('button', { name: p.recordPayment })).not.toBeInTheDocument();
+    expect(
+      paymentSection().queryByRole('button', { name: p.recordPayment }),
+    ).not.toBeInTheDocument();
     // The history is loaded again to show the new record.
-    expect(api.calls.filter((call) => call.path.startsWith(`${PATH}/payments`) && call.method === 'GET').length).toBeGreaterThan(1);
+    expect(
+      api.calls.filter((call) => call.path.startsWith(`${PATH}/payments`) && call.method === 'GET')
+        .length,
+    ).toBeGreaterThan(1);
   });
 
   it('a backdated payment is sent with its day', async () => {
     const { api } = setup(order(), [], (api) =>
-      api.on('POST', `${PATH}/payments`, () => ({ status: 201, body: { payment: payment(), order: order() } })),
+      api.on('POST', `${PATH}/payments`, () => ({
+        status: 201,
+        body: { payment: payment(), order: order() },
+      })),
     );
-    await userEvent.click(await (await loadedPaymentSection()).findByRole('button', { name: p.recordPayment }));
+    await userEvent.click(
+      await (await loadedPaymentSection()).findByRole('button', { name: p.recordPayment }),
+    );
     const form = await sheet(s.paymentTitle);
     await userEvent.selectOptions(form.getByLabelText(s.method), 'CASH');
     const day = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
@@ -166,20 +224,29 @@ describe('recording a payment (§7.7)', () => {
     const { api } = setup(order(), [], (api) =>
       api.on('POST', `${PATH}/payments`, () =>
         reply++ === 0
-          ? errorReply(422, 'PAYMENT_EXCEEDS_BALANCE', 'This is more than the balance due (2450.00).', {
-              amount: 'This is more than the balance due (2450.00).',
-            })
+          ? errorReply(
+              422,
+              'PAYMENT_EXCEEDS_BALANCE',
+              'This is more than the balance due (2450.00).',
+              {
+                amount: 'This is more than the balance due (2450.00).',
+              },
+            )
           : { status: 201, body: { payment: payment(), order: order() } },
       ),
     );
-    await userEvent.click(await (await loadedPaymentSection()).findByRole('button', { name: p.recordPayment }));
+    await userEvent.click(
+      await (await loadedPaymentSection()).findByRole('button', { name: p.recordPayment }),
+    );
     const form = await sheet(s.paymentTitle);
     await userEvent.clear(form.getByLabelText(s.amount));
     await userEvent.type(form.getByLabelText(s.amount), '9999');
     await userEvent.selectOptions(form.getByLabelText(s.method), 'CASH');
     await userEvent.click(form.getByRole('button', { name: s.submitPayment }));
 
-    expect(await form.findAllByText('This is more than the balance due (2450.00).')).not.toHaveLength(0);
+    expect(
+      await form.findAllByText('This is more than the balance due (2450.00).'),
+    ).not.toHaveLength(0);
     expect(form.getByLabelText(s.amount)).toHaveValue('9999');
     await userEvent.click(form.getByRole('button', { name: s.submitPayment }));
     await waitFor(() => expect(posts(api)).toHaveLength(2));
@@ -190,7 +257,12 @@ describe('recording a payment (§7.7)', () => {
 
 describe('refunds (§7.7)', () => {
   it('after a cancel, prompts for the refund owed and records it, linked to the payment', async () => {
-    const cancelled = order({ orderStatus: 'CANCELLED', stage: 'CANCELLED', balanceDue: '0.00', refundOwed: '1000.00' });
+    const cancelled = order({
+      orderStatus: 'CANCELLED',
+      stage: 'CANCELLED',
+      balanceDue: '0.00',
+      refundOwed: '1000.00',
+    });
     const refunded = order({
       orderStatus: 'CANCELLED',
       stage: 'CANCELLED',
@@ -207,7 +279,9 @@ describe('refunds (§7.7)', () => {
     );
     expect(await screen.findByText(p.refundPromptTitle('LKR 1,000.00'))).toBeInTheDocument();
     // A closed order takes no payments.
-    expect(paymentSection().queryByRole('button', { name: p.recordPayment })).not.toBeInTheDocument();
+    expect(
+      paymentSection().queryByRole('button', { name: p.recordPayment }),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(paymentSection().getByRole('button', { name: p.recordRefund }));
     const form = await sheet(s.refundTitle);
@@ -223,17 +297,32 @@ describe('refunds (§7.7)', () => {
       amount: '1000.00',
       refundOfPaymentId: PAYMENT_ID,
     });
-    await waitFor(() => expect(screen.queryByText(p.refundPromptTitle('LKR 1,000.00'))).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByText(p.refundPromptTitle('LKR 1,000.00'))).not.toBeInTheDocument(),
+    );
   });
 
   it('offers only what can succeed: no refund before any payment, no payment on a closed order', async () => {
     setup(order({ amountPaid: '0.00', balanceDue: '3450.00', paymentStatus: 'UNPAID' }), []);
-    expect(await (await loadedPaymentSection()).findByRole('button', { name: p.recordPayment })).toBeInTheDocument();
-    expect(paymentSection().queryByRole('button', { name: p.recordRefund })).not.toBeInTheDocument();
+    expect(
+      await (await loadedPaymentSection()).findByRole('button', { name: p.recordPayment }),
+    ).toBeInTheDocument();
+    expect(
+      paymentSection().queryByRole('button', { name: p.recordRefund }),
+    ).not.toBeInTheDocument();
   });
 
   it('a cancelled order with nothing paid offers neither', async () => {
-    setup(order({ orderStatus: 'CANCELLED', stage: 'CANCELLED', amountPaid: '0.00', balanceDue: '0.00', paymentStatus: 'UNPAID' }), []);
+    setup(
+      order({
+        orderStatus: 'CANCELLED',
+        stage: 'CANCELLED',
+        amountPaid: '0.00',
+        balanceDue: '0.00',
+        paymentStatus: 'UNPAID',
+      }),
+      [],
+    );
     expect(await screen.findByText(p.empty)).toBeInTheDocument();
     expect(paymentSection().queryAllByRole('button')).toHaveLength(0);
   });

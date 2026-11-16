@@ -88,7 +88,9 @@ export interface RouteUnderTest {
 
 /** `route` called with `id` as `as`, with a fresh Idempotency-Key where the route needs one. */
 export function callRoute(server: App, as: Tenant, route: RouteUnderTest, id: string) {
-  let req = request(server)[route.method](route.path(id)).set('Authorization', `Bearer ${as.token}`);
+  let req = request(server)
+    [route.method](route.path(id))
+    .set('Authorization', `Bearer ${as.token}`);
   if (route.idempotent) req = req.set('Idempotency-Key', randomUUID());
   return route.body === undefined ? req : req.send(route.body);
 }

@@ -37,7 +37,15 @@ function order(overrides: Partial<OrderDetail> = {}): OrderDetail {
     paymentMethod: 'COD',
     customer: { id: 'c1', name: 'Kamala Perera', phone: '0771234567' },
     items: [
-      { id: 'i1', productId: null, name: 'Silk Saree', sku: null, quantity: 2, unitPrice: '1050.00', lineTotal: '2100.00' },
+      {
+        id: 'i1',
+        productId: null,
+        name: 'Silk Saree',
+        sku: null,
+        quantity: 2,
+        unitPrice: '1050.00',
+        lineTotal: '2100.00',
+      },
     ],
     subtotal: '2100.00',
     discountAmount: '0.00',
@@ -55,7 +63,8 @@ function order(overrides: Partial<OrderDetail> = {}): OrderDetail {
   };
 }
 
-const ids = (detail: OrderDetail) => messageTemplates(detail, CONTEXT).map((template) => template.id);
+const ids = (detail: OrderDetail) =>
+  messageTemplates(detail, CONTEXT).map((template) => template.id);
 const text = (detail: OrderDetail, id: string) =>
   messageTemplates(detail, CONTEXT).find((template) => template.id === id)?.text;
 
@@ -95,7 +104,9 @@ describe('message templates (§2.1, §6.5)', () => {
       paymentStatus: 'PARTIALLY_PAID',
     });
     expect(text(pickup, 'confirmation')).toContain('Balance to pay: LKR 1,100.00');
-    expect(text(pickup, 'confirmation')).toContain('We’ll let you know when it’s ready to collect.');
+    expect(text(pickup, 'confirmation')).toContain(
+      'We’ll let you know when it’s ready to collect.',
+    );
     expect(text(pickup, 'paymentReminder')).toBe(
       [
         'Hi Kamala Perera,',
@@ -105,16 +116,25 @@ describe('message templates (§2.1, §6.5)', () => {
     );
     const ready = { ...pickup, orderStatus: 'READY' as const, stage: 'READY_FOR_PICKUP' as const };
     expect(ids(ready)).toEqual(['confirmation', 'paymentReminder', 'readyForPickup']);
-    expect(text(ready, 'readyForPickup')).toContain('Balance to pay when you collect: LKR 1,100.00');
+    expect(text(ready, 'readyForPickup')).toContain(
+      'Balance to pay when you collect: LKR 1,100.00',
+    );
     // Collected but not fully paid: the reminder stays.
-    expect(ids({ ...pickup, orderStatus: 'COMPLETED', stage: 'COMPLETED' })).toEqual(['confirmation', 'paymentReminder']);
+    expect(ids({ ...pickup, orderStatus: 'COMPLETED', stage: 'COMPLETED' })).toEqual([
+      'confirmation',
+      'paymentReminder',
+    ]);
   });
 
   it('a dispatched order gets courier, tracking and the COD to keep ready', () => {
     const sent = order({
       orderStatus: 'READY',
       stage: 'OUT_FOR_DELIVERY',
-      delivery: delivery({ status: 'DISPATCHED', courierName: 'Koombiyo', trackingNumber: 'KB123' }),
+      delivery: delivery({
+        status: 'DISPATCHED',
+        courierName: 'Koombiyo',
+        trackingNumber: 'KB123',
+      }),
     });
     expect(text(sent, 'dispatched')).toBe(
       [

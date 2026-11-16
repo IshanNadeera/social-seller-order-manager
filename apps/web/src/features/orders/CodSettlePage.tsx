@@ -72,7 +72,11 @@ export function CodSettlePage() {
               <p className="font-semibold">{c.loadFailed}</p>
               <ApiErrorMessage error={query.error} />
             </FormAlert>
-            <button type="button" className={buttonClass.secondary} onClick={() => void query.refetch()}>
+            <button
+              type="button"
+              className={buttonClass.secondary}
+              onClick={() => void query.refetch()}
+            >
               {strings.common.retry}
             </button>
           </div>
@@ -114,7 +118,9 @@ function Remittance({
   const [chosenCourier, setChosenCourier] = useState<string | null>(null);
   // One remittance comes from one courier; a courier that is gone (all settled) falls back.
   const courier =
-    chosenCourier !== null && couriers.includes(chosenCourier) ? chosenCourier : (couriers[0] ?? NO_COURIER);
+    chosenCourier !== null && couriers.includes(chosenCourier)
+      ? chosenCourier
+      : (couriers[0] ?? NO_COURIER);
   const rows = items.filter((item) => courierOf(item) === courier);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [settling, setSettling] = useState(false);
@@ -161,7 +167,10 @@ function Remittance({
         />
         <ul aria-label={c.listLabel} className="divide-y divide-slate-100">
           {rows.map((row) => (
-            <li key={row.orderId} className="flex flex-wrap items-center justify-between gap-2 py-2">
+            <li
+              key={row.orderId}
+              className="flex flex-wrap items-center justify-between gap-2 py-2"
+            >
               <div className="space-y-0.5">
                 <CheckboxField
                   label={c.row(row.orderNumber, row.recipientName)}
@@ -171,7 +180,9 @@ function Remittance({
                 <p className="pl-8 text-sm text-slate-600">
                   {[
                     row.trackingNumber === null ? null : c.tracking(row.trackingNumber),
-                    row.deliveredAt === null ? null : c.delivered(formatDate(row.deliveredAt, timeZone)),
+                    row.deliveredAt === null
+                      ? null
+                      : c.delivered(formatDate(row.deliveredAt, timeZone)),
                   ]
                     .filter((part): part is string => part !== null)
                     .join(' · ')}
@@ -182,13 +193,17 @@ function Remittance({
                   </Link>
                 </p>
               </div>
-              <span className="font-medium text-slate-900">{formatMoney(row.codAmount, currency)}</span>
+              <span className="font-medium text-slate-900">
+                {formatMoney(row.codAmount, currency)}
+              </span>
             </li>
           ))}
         </ul>
       </div>
 
-      {total > items.length && <p className="text-sm text-slate-600">{c.more(items.length, total)}</p>}
+      {total > items.length && (
+        <p className="text-sm text-slate-600">{c.more(items.length, total)}</p>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="font-medium">{c.selected(chosen.length, formatMoney(sum, currency))}</p>
@@ -255,7 +270,9 @@ function SettleSheet({
     mutationFn: (input: CodBulkSettleInput) => {
       const body = JSON.stringify(input);
       if (attempt.current?.body !== body) attempt.current = { body, key: crypto.randomUUID() };
-      return api.post<CodBulkSettled>('/cod/settle', input, { idempotencyKey: attempt.current.key });
+      return api.post<CodBulkSettled>('/cod/settle', input, {
+        idempotencyKey: attempt.current.key,
+      });
     },
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: codKeys.all(businessId) });
@@ -285,7 +302,9 @@ function SettleSheet({
   const fields = strings.orders.delivery.settleSheet;
   return (
     <Sheet open={open} title={s.title} busy={save.isPending} onClose={onClose}>
-      <p className="text-slate-700">{s.body(orderIds.length, courier, formatMoney(total, currency))}</p>
+      <p className="text-slate-700">
+        {s.body(orderIds.length, courier, formatMoney(total, currency))}
+      </p>
       {save.isError && (
         <FormAlert tone="error">
           <ApiErrorMessage error={save.error} />
@@ -315,7 +334,11 @@ function SettleSheet({
           error={errors.reference?.message}
           {...form.register('reference')}
         />
-        <TextAreaField label={fields.notes} error={errors.notes?.message} {...form.register('notes')} />
+        <TextAreaField
+          label={fields.notes}
+          error={errors.notes?.message}
+          {...form.register('notes')}
+        />
         <SubmitButton pending={save.isPending} pendingLabel={s.pending}>
           {s.submit}
         </SubmitButton>

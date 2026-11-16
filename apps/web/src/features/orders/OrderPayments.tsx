@@ -71,9 +71,15 @@ export function OrderPayments({ order }: { order: OrderDetail }) {
     <div className="space-y-4">
       {refundOwed && (
         <div role="status" className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3">
-          <p className="font-semibold text-amber-900">{p.refundPromptTitle(money(order.refundOwed))}</p>
+          <p className="font-semibold text-amber-900">
+            {p.refundPromptTitle(money(order.refundOwed))}
+          </p>
           <p className="text-sm text-amber-900">{p.refundPromptBody}</p>
-          <button type="button" className={buttonClass.primary} onClick={() => setRecording('REFUND')}>
+          <button
+            type="button"
+            className={buttonClass.primary}
+            onClick={() => setRecording('REFUND')}
+          >
             {p.recordRefund}
           </button>
         </div>
@@ -97,22 +103,27 @@ export function OrderPayments({ order }: { order: OrderDetail }) {
       {(canPay || (canRefund && !refundOwed)) && (
         <div className="flex flex-wrap gap-2">
           {canPay && (
-            <button type="button" className={buttonClass.primary} onClick={() => setRecording('PAYMENT')}>
+            <button
+              type="button"
+              className={buttonClass.primary}
+              onClick={() => setRecording('PAYMENT')}
+            >
               {p.recordPayment}
             </button>
           )}
           {canRefund && !refundOwed && (
-            <button type="button" className={buttonClass.secondary} onClick={() => setRecording('REFUND')}>
+            <button
+              type="button"
+              className={buttonClass.secondary}
+              onClick={() => setRecording('REFUND')}
+            >
               {p.recordRefund}
             </button>
           )}
         </div>
       )}
 
-      <PaymentHistory
-        query={payments}
-        onPage={setPage}
-      />
+      <PaymentHistory query={payments} onPage={setPage} />
 
       <PaymentSheet
         order={order}
@@ -144,7 +155,11 @@ function PaymentHistory({
               <p className="font-semibold">{p.loadFailed}</p>
               <ApiErrorMessage error={query.error} />
             </FormAlert>
-            <button type="button" className={buttonClass.secondary} onClick={() => void query.refetch()}>
+            <button
+              type="button"
+              className={buttonClass.secondary}
+              onClick={() => void query.refetch()}
+            >
               {strings.common.retry}
             </button>
           </div>
@@ -179,7 +194,9 @@ function PaymentHistory({
                 </span>
                 <span
                   className={
-                    payment.type === 'REFUND' ? 'font-medium text-red-800' : 'font-medium text-slate-900'
+                    payment.type === 'REFUND'
+                      ? 'font-medium text-red-800'
+                      : 'font-medium text-slate-900'
                   }
                 >
                   {payment.type === 'REFUND' ? '−' : ''}

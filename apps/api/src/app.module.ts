@@ -6,6 +6,7 @@ import { EnvModule } from './common/env.module';
 import { HealthModule } from './common/health/health.module';
 import { PrismaModule } from './common/prisma.module';
 import { CustomersModule } from './customers/customers.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { OrdersModule } from './orders/orders.module';
@@ -29,6 +30,7 @@ export class AppModule {
         OrdersModule,
         PaymentsModule,
         DeliveriesModule,
+        DashboardModule,
       ],
     };
   }

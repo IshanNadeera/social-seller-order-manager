@@ -584,7 +584,8 @@ export const strings = {
       },
     },
     messages: {
-      intro: 'Copy a message and paste it into WhatsApp, Messenger or SMS. Nothing is sent from here.',
+      intro:
+        'Copy a message and paste it into WhatsApp, Messenger or SMS. Nothing is sent from here.',
       none: 'No messages fit this order right now.',
       copy: 'Copy',
       copyLabel: (title: string) => `Copy “${title}”`,
@@ -600,12 +601,14 @@ export const strings = {
       greeting: (name: string | null) => (name === null ? 'Hi,' : `Hi ${name},`),
       thanksForOrder: (orderNumber: string, business: string) =>
         `Thank you for your order ${orderNumber} from ${business}.`,
-      itemLine: (quantity: number, name: string, amount: string) => `• ${quantity} × ${name}: ${amount}`,
+      itemLine: (quantity: number, name: string, amount: string) =>
+        `• ${quantity} × ${name}: ${amount}`,
       total: (amount: string) => `Total: ${amount}`,
       payOnDelivery: (amount: string) => `Please pay ${amount} in cash on delivery.`,
       balanceToPay: (amount: string) => `Balance to pay: ${amount}`,
       paidInFull: 'Paid in full. Thank you!',
-      deliverTo: (recipient: string, address: string) => `We’ll deliver to ${recipient}, ${address}.`,
+      deliverTo: (recipient: string, address: string) =>
+        `We’ll deliver to ${recipient}, ${address}.`,
       pickupLater: 'We’ll let you know when it’s ready to collect.',
       reminder: (orderNumber: string, amount: string) =>
         `A friendly reminder that ${amount} is still to be paid for your order ${orderNumber}.`,

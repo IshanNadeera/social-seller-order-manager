@@ -64,12 +64,8 @@ const settle = (body: object, key: string = randomUUID(), tenant: Tenant = tenan
   post('/cod/settle', body, tenant).set('Idempotency-Key', key);
 
 const awaiting = async (tenant: Tenant = tenants.a) =>
-  (
-    await request(server)
-      .get(`${API}/cod/awaiting?pageSize=100`)
-      .set(auth(tenant))
-      .expect(200)
-  ).body as Page<CodAwaitingItem>;
+  (await request(server).get(`${API}/cod/awaiting?pageSize=100`).set(auth(tenant)).expect(200))
+    .body as Page<CodAwaitingItem>;
 
 const codStatus = async (orderId: string) =>
   (await prisma.delivery.findUniqueOrThrow({ where: { orderId } })).codStatus;
@@ -83,7 +79,10 @@ beforeAll(async () => {
     .overrideProvider(JWKS)
     .useValue(testAuth.jwks)
     .compile();
-  app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false, logger: false });
+  app = moduleRef.createNestApplication<NestExpressApplication>({
+    bodyParser: false,
+    logger: false,
+  });
   configureApp(app, env);
   await app.init();
   server = app.getHttpServer();
@@ -180,7 +179,9 @@ describe('POST /cod/settle (§9.4)', () => {
     const early = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
     const before = await settle({ orderIds: [fresh.id], settledAt: early }).expect(422);
     expect(before.body).toMatchObject({ code: 'SETTLED_BEFORE_DELIVERY' });
-    expect(Object.keys((before.body as { fieldErrors: object }).fieldErrors)).toEqual(['settledAt']);
+    expect(Object.keys((before.body as { fieldErrors: object }).fieldErrors)).toEqual([
+      'settledAt',
+    ]);
   });
 
   it('another business’s order is not found, and nothing is settled', async () => {

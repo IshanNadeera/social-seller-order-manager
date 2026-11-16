@@ -307,7 +307,11 @@ export class PaymentsService {
    * gets its own COD payment; the first refusal rolls everything back, so it is all or nothing.
    * Orders are locked in id order, so two overlapping settles can't deadlock.
    */
-  async settleCodBulk(tx: Tx, auth: AuthContext, input: CodBulkSettleInput): Promise<CodBulkSettled> {
+  async settleCodBulk(
+    tx: Tx,
+    auth: AuthContext,
+    input: CodBulkSettleInput,
+  ): Promise<CodBulkSettled> {
     // The same date, reference and notes go on every order's COD payment.
     const { orderIds, ...one } = input;
     const orders = await tx.order.findMany({
@@ -360,7 +364,10 @@ export class PaymentsService {
     });
     const { delivery } = order;
     if (delivery === null) {
-      throw refuse('NOT_A_DELIVERY_ORDER', 'This is a pickup order, so it has no cash on delivery.');
+      throw refuse(
+        'NOT_A_DELIVERY_ORDER',
+        'This is a pickup order, so it has no cash on delivery.',
+      );
     }
     const settled = nextCodStatus(delivery.codStatus, 'SETTLED');
     if (settled === null) {

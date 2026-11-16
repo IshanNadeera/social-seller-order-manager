@@ -237,3 +237,44 @@ export interface PaymentRecorded {
   payment: PaymentView;
   order: OrderDetail;
 }
+
+/**
+ * GET /dashboard/summary (§6.2, §15). Money is a decimal string. Order value, money received and
+ * COD still with couriers are separate figures and must never be added together (§6.2): a
+ * delivered COD order is not money received until it is settled.
+ */
+export interface DashboardSummary {
+  /** The business timezone every date here is in. */
+  timeZone: string;
+  /** Today, on the business's clock. */
+  today: { date: string; ordersCreated: number };
+  /** The state right now, whatever the period. */
+  now: {
+    ordersNeedingAction: number;
+    readyToSend: number;
+    outForDelivery: number;
+    /** What customers still owe on open and completed orders (COD not yet settled included). */
+    outstandingBalance: string;
+    /** COD on parcels the courier is carrying now. */
+    codOutForDelivery: string;
+    /** COD couriers have collected and not yet paid over. */
+    codWithCourier: string;
+    /** Money still held on cancelled and returned orders. */
+    refundsOwed: string;
+  };
+  /** The chosen local dates, both included. */
+  period: {
+    from: string;
+    to: string;
+    ordersCreated: number;
+    cancelled: number;
+    /** Cancelled ÷ created, of the orders created in the period; null when none were created. */
+    cancellationRate: number | null;
+    delivered: number;
+    /** Total of the orders created in the period, cancelled ones left out. Not revenue. */
+    orderValue: string;
+    paymentsReceived: string;
+    refunds: string;
+    netReceived: string;
+  };
+}

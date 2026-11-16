@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { inclusiveDays, isIsoDate, localDateRangeToUtc, startOfLocalDay } from './index.js';
+import {
+  inclusiveDays,
+  isIsoDate,
+  localDateOf,
+  localDateRangeToUtc,
+  startOfLocalDay,
+} from './index.js';
 
 describe('isIsoDate', () => {
   it.each(['2026-10-01', '2024-02-29', '2026-12-31'])('accepts %s', (date) => {
@@ -53,5 +59,14 @@ describe('local dates → UTC bounds (ADR-015)', () => {
     expect(startOfLocalDay('2026-12-01', 'Europe/London').toISOString()).toBe(
       '2026-12-01T00:00:00.000Z',
     );
+  });
+});
+
+describe('localDateOf', () => {
+  it('is the date on the business’s clock, not UTC’s', () => {
+    // 18:45 UTC on 31 October is 00:15 on 1 November in Colombo (+5:30).
+    expect(localDateOf(new Date('2026-10-31T18:45:00Z'), 'Asia/Colombo')).toBe('2026-11-01');
+    expect(localDateOf(new Date('2026-10-31T18:15:00Z'), 'Asia/Colombo')).toBe('2026-10-31');
+    expect(localDateOf(new Date('2026-10-31T18:45:00Z'), 'UTC')).toBe('2026-10-31');
   });
 });

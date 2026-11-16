@@ -67,3 +67,14 @@ export function localDateRangeToUtc(
   }
   return bounds;
 }
+
+/** The calendar date (YYYY-MM-DD) that `instant` falls on in `timeZone`, e.g. "today" there. */
+export function localDateOf(instant: Date, timeZone: string): string {
+  // en-CA writes dates as YYYY-MM-DD.
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(instant);
+}

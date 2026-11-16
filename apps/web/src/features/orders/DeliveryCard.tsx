@@ -66,7 +66,13 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function DeliveryCard({ order, delivery }: { order: OrderDetail; delivery: OrderDeliveryView }) {
+export function DeliveryCard({
+  order,
+  delivery,
+}: {
+  order: OrderDetail;
+  delivery: OrderDeliveryView;
+}) {
   const api = useApi();
   const saved = useOrderSaved();
   const currency = useBusinessCurrency();
@@ -150,9 +156,7 @@ export function DeliveryCard({ order, delivery }: { order: OrderDetail; delivery
               <button
                 key={to}
                 type="button"
-                className={
-                  to === 'DISPATCHED' ? buttonClass.primary : buttonClass.secondary
-                }
+                className={to === 'DISPATCHED' ? buttonClass.primary : buttonClass.secondary}
                 disabled={deliver.isPending}
                 onClick={() => open(to)}
               >
@@ -218,7 +222,11 @@ function DispatchSheet({
 }) {
   const api = useApi();
   const form = useForm<DispatchValues, unknown, DispatchBody>({
-    resolver: zodResolver(deliveryDispatchSchema) as Resolver<DispatchValues, unknown, DispatchBody>,
+    resolver: zodResolver(deliveryDispatchSchema) as Resolver<
+      DispatchValues,
+      unknown,
+      DispatchBody
+    >,
     defaultValues: { courierName: '', trackingNumber: '' },
   });
   const save = useMutation({

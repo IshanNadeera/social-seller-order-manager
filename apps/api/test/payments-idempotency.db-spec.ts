@@ -93,7 +93,10 @@ beforeAll(async () => {
     .overrideProvider(JWKS)
     .useValue(testAuth.jwks)
     .compile();
-  app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false, logger: false });
+  app = moduleRef.createNestApplication<NestExpressApplication>({
+    bodyParser: false,
+    logger: false,
+  });
   configureApp(app, env);
   await app.init();
   server = app.getHttpServer();
@@ -158,7 +161,11 @@ describe('POST /orders/:id/payments (§9.8)', () => {
 
   it('without a key nothing is recorded', async () => {
     const order = await cashOrder();
-    await post(`${O}/${order.id}/payments`, { type: 'PAYMENT', method: 'CASH', amount: '100' }).expect(400);
+    await post(`${O}/${order.id}/payments`, {
+      type: 'PAYMENT',
+      method: 'CASH',
+      amount: '100',
+    }).expect(400);
     expect(await payments(order.id)).toHaveLength(0);
   });
 });
@@ -179,7 +186,10 @@ describe('settling COD (§7.8)', () => {
 
   it('two different keys at the same moment: one settles, the other is refused', async () => {
     const order = await collectedOrder();
-    const results = await Promise.all([settle(order.id, randomUUID()), settle(order.id, randomUUID())]);
+    const results = await Promise.all([
+      settle(order.id, randomUUID()),
+      settle(order.id, randomUUID()),
+    ]);
     expect(results.map((res) => res.status).sort()).toEqual([200, 422]);
     const refused = results.find((res) => res.status === 422);
     expect(refused?.body).toMatchObject({ code: 'COD_NOT_COLLECTED' });

@@ -49,7 +49,15 @@ function order(overrides: Partial<OrderDetail> = {}): OrderDetail {
     paymentMethod: 'COD',
     customer: { id: null, name: 'Walk-in customer', phone: null },
     items: [
-      { id: 'i1', productId: null, name: 'Silk Saree', sku: null, quantity: 1, unitPrice: '2100.00', lineTotal: '2100.00' },
+      {
+        id: 'i1',
+        productId: null,
+        name: 'Silk Saree',
+        sku: null,
+        quantity: 1,
+        unitPrice: '2100.00',
+        lineTotal: '2100.00',
+      },
     ],
     subtotal: '2100.00',
     discountAmount: '0.00',
@@ -91,7 +99,10 @@ const loadedCard = async () => {
   await screen.findByRole('heading', { level: 1, name: 'NIM-0042' });
   return card();
 };
-const buttons = () => card().queryAllByRole('button').map((button) => button.textContent);
+const buttons = () =>
+  card()
+    .queryAllByRole('button')
+    .map((button) => button.textContent);
 const value = (label: string) => card().getByText(label).nextElementSibling;
 const sheet = async (title: string) => within(await screen.findByRole('dialog', { name: title }));
 const posts = (api: FakeApi, action: string) =>
@@ -109,7 +120,12 @@ describe('delivery details (§6.5)', () => {
   });
 
   it('hides COD for a prepaid delivery', async () => {
-    setup(withDelivery({ codAmount: '0.00', codStatus: 'NOT_APPLICABLE' }, { paymentMethod: 'BANK_TRANSFER' }));
+    setup(
+      withDelivery(
+        { codAmount: '0.00', codStatus: 'NOT_APPLICABLE' },
+        { paymentMethod: 'BANK_TRANSFER' },
+      ),
+    );
     await loadedCard();
     expect(card().queryByText(d.codAmount)).not.toBeInTheDocument();
   });
@@ -124,7 +140,10 @@ describe('delivery actions (§7.2)', () => {
   });
 
   it('dispatches with courier and tracking, then offers delivered or failed', async () => {
-    const sent = withDelivery({ status: 'DISPATCHED', courierName: 'Koombiyo', trackingNumber: 'KB123' }, { stage: 'OUT_FOR_DELIVERY' });
+    const sent = withDelivery(
+      { status: 'DISPATCHED', courierName: 'Koombiyo', trackingNumber: 'KB123' },
+      { stage: 'OUT_FOR_DELIVERY' },
+    );
     const { api } = setup(order(), (api) =>
       api.on('POST', `${PATH}/delivery/dispatch`, () => ({ status: 200, body: sent })),
     );
@@ -144,7 +163,10 @@ describe('delivery actions (§7.2)', () => {
   });
 
   it('marks delivered in one tap; collected COD can then be settled', async () => {
-    const delivered = withDelivery({ status: 'DELIVERED', codStatus: 'COLLECTED' }, { orderStatus: 'COMPLETED', stage: 'COMPLETED' });
+    const delivered = withDelivery(
+      { status: 'DELIVERED', codStatus: 'COLLECTED' },
+      { orderStatus: 'COMPLETED', stage: 'COMPLETED' },
+    );
     const { api } = setup(withDelivery({ status: 'DISPATCHED' }), (api) =>
       api.on('POST', `${PATH}/delivery/delivered`, () => ({ status: 200, body: delivered })),
     );
@@ -176,7 +198,14 @@ describe('delivery actions (§7.2)', () => {
   });
 
   it('staff don’t see the owner-only return of a delivered parcel', async () => {
-    setup(withDelivery({ status: 'DELIVERED', codStatus: 'SETTLED' }, { orderStatus: 'COMPLETED', stage: 'COMPLETED' }), () => {}, 'STAFF');
+    setup(
+      withDelivery(
+        { status: 'DELIVERED', codStatus: 'SETTLED' },
+        { orderStatus: 'COMPLETED', stage: 'COMPLETED' },
+      ),
+      () => {},
+      'STAFF',
+    );
     await loadedCard();
     expect(buttons()).toEqual([]);
   });
@@ -184,12 +213,21 @@ describe('delivery actions (§7.2)', () => {
 
 describe('settling COD (§7.7)', () => {
   const collected = () =>
-    withDelivery({ status: 'DELIVERED', codStatus: 'COLLECTED' }, { orderStatus: 'COMPLETED', stage: 'COMPLETED' });
+    withDelivery(
+      { status: 'DELIVERED', codStatus: 'COLLECTED' },
+      { orderStatus: 'COMPLETED', stage: 'COMPLETED' },
+    );
 
   it('records the payout with an Idempotency-Key and shows COD as settled', async () => {
     const settled = withDelivery(
       { status: 'DELIVERED', codStatus: 'SETTLED' },
-      { orderStatus: 'COMPLETED', stage: 'COMPLETED', amountPaid: '2450.00', balanceDue: '0.00', paymentStatus: 'PAID' },
+      {
+        orderStatus: 'COMPLETED',
+        stage: 'COMPLETED',
+        amountPaid: '2450.00',
+        balanceDue: '0.00',
+        paymentStatus: 'PAID',
+      },
     );
     const { api } = setup(collected(), (api) =>
       api.on('POST', `${PATH}/cod/settle`, () => ({
@@ -232,9 +270,14 @@ describe('settling COD (§7.7)', () => {
     const { api } = setup(collected(), (api) =>
       api.on('POST', `${PATH}/cod/settle`, () =>
         reply++ === 0
-          ? errorReply(422, 'SETTLED_BEFORE_DELIVERY', 'The courier can’t have paid you before the delivery.', {
-              settledAt: 'The courier can’t have paid you before the delivery.',
-            })
+          ? errorReply(
+              422,
+              'SETTLED_BEFORE_DELIVERY',
+              'The courier can’t have paid you before the delivery.',
+              {
+                settledAt: 'The courier can’t have paid you before the delivery.',
+              },
+            )
           : errorReply(503, 'UNAVAILABLE', 'Try again.'),
       ),
     );
@@ -242,7 +285,9 @@ describe('settling COD (§7.7)', () => {
     await userEvent.click(card().getByRole('button', { name: v.settleCod }));
     const form = await sheet(v.settleSheet.title);
     await userEvent.click(form.getByRole('button', { name: v.settleSheet.submit }));
-    expect(await form.findAllByText('The courier can’t have paid you before the delivery.')).not.toHaveLength(0);
+    expect(
+      await form.findAllByText('The courier can’t have paid you before the delivery.'),
+    ).not.toHaveLength(0);
 
     await userEvent.click(form.getByRole('button', { name: v.settleSheet.submit }));
     await waitFor(() => expect(posts(api, 'cod/settle')).toHaveLength(2));

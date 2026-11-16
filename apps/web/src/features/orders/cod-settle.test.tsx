@@ -27,8 +27,17 @@ function item(n: number, courierName: string | null, codAmount: string): CodAwai
   };
 }
 
-const ITEMS = [item(1, 'Domex', '1000.00'), item(2, 'Domex', '850.00'), item(3, 'Koombiyo', '2000.00')];
-const page = (items: CodAwaitingItem[]): Page<CodAwaitingItem> => ({ items, page: 1, pageSize: 50, total: items.length });
+const ITEMS = [
+  item(1, 'Domex', '1000.00'),
+  item(2, 'Domex', '850.00'),
+  item(3, 'Koombiyo', '2000.00'),
+];
+const page = (items: CodAwaitingItem[]): Page<CodAwaitingItem> => ({
+  items,
+  page: 1,
+  pageSize: 50,
+  total: items.length,
+});
 
 function setup(items: CodAwaitingItem[], configure: (api: FakeApi) => void = () => {}) {
   const api = createFakeApi();
@@ -36,10 +45,14 @@ function setup(items: CodAwaitingItem[], configure: (api: FakeApi) => void = () 
   api.on('GET', '/cod/awaiting', () => ({ status: 200, body: page(current) }));
   configure(api);
   renderApp('/cod', createFakeAuth(fakeSession()), api);
-  return { api, settle: (ids: string[]) => (current = current.filter((row) => !ids.includes(row.orderId))) };
+  return {
+    api,
+    settle: (ids: string[]) => (current = current.filter((row) => !ids.includes(row.orderId))),
+  };
 }
 
-const posts = (api: FakeApi) => api.calls.filter((call) => call.method === 'POST' && call.path === '/cod/settle');
+const posts = (api: FakeApi) =>
+  api.calls.filter((call) => call.method === 'POST' && call.path === '/cod/settle');
 const box = (n: number) => screen.getByLabelText(c.row(`NIM-000${n}`, `Customer ${n}`));
 const sheet = async () => within(await screen.findByRole('dialog', { name: c.sheet.title }));
 
@@ -88,7 +101,11 @@ describe('COD to settle (§2.2)', () => {
     expect(await screen.findByText(c.done(2, 'LKR 1,850.00'))).toBeInTheDocument();
     const [post] = posts(fake.api) as [RecordedCall];
     expect(post.headers['Idempotency-Key']).toMatch(UUID);
-    expect(post.body).toEqual({ orderIds: [ID(1), ID(2)], reference: 'Domex remit 12', notes: null });
+    expect(post.body).toEqual({
+      orderIds: [ID(1), ID(2)],
+      reference: 'Domex remit 12',
+      notes: null,
+    });
     // Only Koombiyo is left.
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 2, name: 'Koombiyo' })).toBeInTheDocument(),
@@ -100,7 +117,11 @@ describe('COD to settle (§2.2)', () => {
     const { api } = setup(ITEMS, (api) =>
       api.on('POST', '/cod/settle', () =>
         reply++ === 0
-          ? errorReply(422, 'COD_NOT_COLLECTED', 'NIM-0002: This cash on delivery has already been settled.')
+          ? errorReply(
+              422,
+              'COD_NOT_COLLECTED',
+              'NIM-0002: This cash on delivery has already been settled.',
+            )
           : errorReply(503, 'UNAVAILABLE', 'Try again.'),
       ),
     );
@@ -110,7 +131,9 @@ describe('COD to settle (§2.2)', () => {
     await userEvent.click(screen.getByRole('button', { name: c.settle }));
     const form = await sheet();
     await userEvent.click(form.getByRole('button', { name: c.sheet.submit }));
-    expect(await form.findByText('NIM-0002: This cash on delivery has already been settled.')).toBeInTheDocument();
+    expect(
+      await form.findByText('NIM-0002: This cash on delivery has already been settled.'),
+    ).toBeInTheDocument();
 
     await userEvent.click(form.getByRole('button', { name: c.sheet.submit }));
     await waitFor(() => expect(posts(api)).toHaveLength(2));

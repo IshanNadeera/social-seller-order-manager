@@ -137,7 +137,10 @@ beforeAll(async () => {
     .overrideProvider(JWKS)
     .useValue(auth.jwks)
     .compile();
-  app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false, logger: false });
+  app = moduleRef.createNestApplication<NestExpressApplication>({
+    bodyParser: false,
+    logger: false,
+  });
   configureApp(app, env);
   await app.init();
   server = app.getHttpServer();
@@ -178,7 +181,11 @@ const attacks: Attack[] = (['order', 'cancelledOrder'] as const).flatMap((which)
   {
     covers: 'PATCH /orders/:id',
     name: `edit ${which}`,
-    route: { method: 'patch', path: (id) => `${O}/${id}`, body: { notes: 'Taken', discountAmount: '1' } },
+    route: {
+      method: 'patch',
+      path: (id) => `${O}/${id}`,
+      body: { notes: 'Taken', discountAmount: '1' },
+    },
     target: (victim) => victim[which],
   },
   {
@@ -227,7 +234,11 @@ const attacks: Attack[] = (['order', 'cancelledOrder'] as const).flatMap((which)
   {
     covers: 'POST /orders/:id/delivery/dispatch',
     name: `dispatch ${which}`,
-    route: { method: 'post', path: (id) => `${O}/${id}/delivery/dispatch`, body: { courierName: 'Taken' } },
+    route: {
+      method: 'post',
+      path: (id) => `${O}/${id}/delivery/dispatch`,
+      body: { courierName: 'Taken' },
+    },
     target: (victim) => victim[which],
   },
   {
@@ -239,13 +250,21 @@ const attacks: Attack[] = (['order', 'cancelledOrder'] as const).flatMap((which)
   {
     covers: 'POST /orders/:id/delivery/failed',
     name: `mark the delivery of ${which} failed`,
-    route: { method: 'post', path: (id) => `${O}/${id}/delivery/failed`, body: { reason: 'Taken' } },
+    route: {
+      method: 'post',
+      path: (id) => `${O}/${id}/delivery/failed`,
+      body: { reason: 'Taken' },
+    },
     target: (victim) => victim[which],
   },
   {
     covers: 'POST /orders/:id/delivery/returned',
     name: `mark ${which} returned`,
-    route: { method: 'post', path: (id) => `${O}/${id}/delivery/returned`, body: { reason: 'Taken' } },
+    route: {
+      method: 'post',
+      path: (id) => `${O}/${id}/delivery/returned`,
+      body: { reason: 'Taken' },
+    },
     target: (victim) => victim[which],
   },
 ]);
@@ -284,10 +303,14 @@ describe('IDs that are not UUIDs', () => {
 
 describe('GET /orders never shows another business’s orders', () => {
   const list = async (query: Record<string, string> = {}) =>
-    (await request(server).get(O).query(query).set(as(a.tenant)).expect(200)).body as Page<OrderSummary>;
+    (await request(server).get(O).query(query).set(as(a.tenant)).expect(200))
+      .body as Page<OrderSummary>;
 
   it('the unfiltered list holds exactly the caller’s own orders', async () => {
-    const own = await prisma.order.findMany({ where: { businessId: a.tenant.businessId }, select: { id: true } });
+    const own = await prisma.order.findMany({
+      where: { businessId: a.tenant.businessId },
+      select: { id: true },
+    });
     const page = await list({ pageSize: '100' });
     expect(page.items.map((order) => order.id).sort()).toEqual(own.map((order) => order.id).sort());
   });
@@ -366,7 +389,8 @@ describe('an order can’t point at another business’s records', () => {
 describe('COD across orders never reaches another business', () => {
   /** Takes one of `owner`'s new COD orders to delivered: its COD is COLLECTED. */
   async function collected(owner: Owned): Promise<string> {
-    const order = (await createOrder(owner.tenant, orderBody(owner)).expect(201)).body as OrderDetail;
+    const order = (await createOrder(owner.tenant, orderBody(owner)).expect(201))
+      .body as OrderDetail;
     const step = (path: string, body: object) =>
       request(server).post(`${O}/${order.id}${path}`).set(as(owner.tenant)).send(body).expect(200);
     await step('/status', { to: 'CONFIRMED' });
@@ -396,28 +420,37 @@ describe('COD across orders never reaches another business', () => {
   it.each([
     ['A settles B’s COD', () => [a, b] as const],
     ['B settles A’s COD', () => [b, a] as const],
-  ])('POST /cod/settle: %s gets the standard 404, and nothing is written', async (_label, parties) => {
-    const [attacker, victim] = parties();
-    const foreign = await collected(victim);
-    const own = await collected(attacker);
-    const before = [await snapshot(attacker), await snapshot(victim)];
-    // Alone or hidden among the attacker's own orders, the answer is the same as for no order.
-    for (const orderIds of [[foreign], [own, foreign]]) {
-      const res = await settle(attacker.tenant, orderIds).expect(404);
-      const missing = await settle(attacker.tenant, [randomUUID()]).expect(404);
-      expect(withoutRequestId(res.body)).toEqual(withoutRequestId(missing.body));
-    }
-    expect([await snapshot(attacker), await snapshot(victim)]).toEqual(before);
-  });
+  ])(
+    'POST /cod/settle: %s gets the standard 404, and nothing is written',
+    async (_label, parties) => {
+      const [attacker, victim] = parties();
+      const foreign = await collected(victim);
+      const own = await collected(attacker);
+      const before = [await snapshot(attacker), await snapshot(victim)];
+      // Alone or hidden among the attacker's own orders, the answer is the same as for no order.
+      for (const orderIds of [[foreign], [own, foreign]]) {
+        const res = await settle(attacker.tenant, orderIds).expect(404);
+        const missing = await settle(attacker.tenant, [randomUUID()]).expect(404);
+        expect(withoutRequestId(res.body)).toEqual(withoutRequestId(missing.body));
+      }
+      expect([await snapshot(attacker), await snapshot(victim)]).toEqual(before);
+    },
+  );
 });
 
 // ---------- businessId sent by the client ----------
 
 describe('a businessId from the client is refused (400), and nothing is written', () => {
-  const rejected = { code: 'VALIDATION_ERROR', fieldErrors: { businessId: 'This field is not allowed.' } };
+  const rejected = {
+    code: 'VALIDATION_ERROR',
+    fieldErrors: { businessId: 'This field is not allowed.' },
+  };
 
   it.each([
-    ['POST /orders', () => createOrder(a.tenant, { ...orderBody(a), businessId: b.tenant.businessId })],
+    [
+      'POST /orders',
+      () => createOrder(a.tenant, { ...orderBody(a), businessId: b.tenant.businessId }),
+    ],
     [
       'PATCH /orders/:id',
       () =>

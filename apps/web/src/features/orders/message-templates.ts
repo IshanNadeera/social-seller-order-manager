@@ -9,7 +9,8 @@ import { strings } from '../../lib/strings';
 
 const m = strings.orders.messages;
 
-export type MessageTemplateId = 'confirmation' | 'paymentReminder' | 'dispatched' | 'readyForPickup';
+export type MessageTemplateId =
+  'confirmation' | 'paymentReminder' | 'dispatched' | 'readyForPickup';
 
 export type MessageTemplate = { id: MessageTemplateId; title: string; text: string };
 
@@ -65,9 +66,7 @@ export function messageTemplates(order: OrderDetail, context: MessageContext): M
       '',
       m.total(money(order.totalAmount)),
       paymentLine,
-      delivery !== null
-        ? m.deliverTo(delivery.recipientName, address(order))
-        : m.pickupLater,
+      delivery !== null ? m.deliverTo(delivery.recipientName, address(order)) : m.pickupLater,
     ),
   });
 
@@ -78,7 +77,11 @@ export function messageTemplates(order: OrderDetail, context: MessageContext): M
     templates.push({
       id: 'paymentReminder',
       title: m.titles.paymentReminder,
-      text: lines(hi, m.reminder(order.orderNumber, money(order.balanceDue)), m.signOff(context.businessName)),
+      text: lines(
+        hi,
+        m.reminder(order.orderNumber, money(order.balanceDue)),
+        m.signOff(context.businessName),
+      ),
     });
   }
 

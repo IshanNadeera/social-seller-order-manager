@@ -28,7 +28,15 @@ function order(overrides: Partial<OrderDetail> = {}): OrderDetail {
     paymentMethod: 'CASH',
     customer: { id: null, name: 'Walk-in customer', phone: null },
     items: [
-      { id: 'i1', productId: null, name: 'Silk Saree', sku: null, quantity: 1, unitPrice: '3450.00', lineTotal: '3450.00' },
+      {
+        id: 'i1',
+        productId: null,
+        name: 'Silk Saree',
+        sku: null,
+        quantity: 1,
+        unitPrice: '3450.00',
+        lineTotal: '3450.00',
+      },
     ],
     subtotal: '3450.00',
     discountAmount: '0.00',
@@ -87,7 +95,14 @@ describe('message templates on the order page (§6.5)', () => {
   });
 
   it('a cancelled order offers no messages', async () => {
-    setup(order({ orderStatus: 'CANCELLED', stage: 'CANCELLED', balanceDue: '0.00', refundOwed: '1000.00' }));
+    setup(
+      order({
+        orderStatus: 'CANCELLED',
+        stage: 'CANCELLED',
+        balanceDue: '0.00',
+        refundOwed: '1000.00',
+      }),
+    );
     expect((await card()).getByText(m.none)).toBeInTheDocument();
   });
 });
