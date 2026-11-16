@@ -1,10 +1,11 @@
-// Tenant isolation sweep for orders (docs/DEVELOPMENT.md §11.1, §12.4, task C17). Business A attacks
-// business B (and B attacks A) on every order route that takes an ID; lists must not leak; an order
-// can't point at another business's customer, product or saved address; a client businessId is
-// refused. Needs a migrated local database. Run with: npm run test:db -w apps/api
+// Tenant isolation sweep for orders, payments, deliveries and COD (docs/DEVELOPMENT.md §11.1, §12.4,
+// tasks C17 and D9). Business A attacks business B (and B attacks A) on every route that takes an
+// order ID; lists must not leak; an order can't point at another business's customer, product or
+// saved address; a client businessId is refused. Needs a migrated local database.
+// Run with: npm run test:db -w apps/api
 //
-// A coverage guard at the end lists the routes OrdersController registers. A new order route fails
-// it until it is added to this sweep.
+// A coverage guard at the end lists the routes the order, payment, delivery and COD controllers
+// register. A new route fails it until it is added to this sweep.
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { RequestMethod } from '@nestjs/common';
@@ -13,7 +14,14 @@ import type { Type } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
-import type { CustomerDetail, OrderDetail, OrderSummary, Page, ProductView } from '@ssom/shared';
+import type {
+  CodAwaitingItem,
+  CustomerDetail,
+  OrderDetail,
+  OrderSummary,
+  Page,
+  ProductView,
+} from '@ssom/shared';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -22,9 +30,18 @@ import { configureApp } from '../src/app.setup';
 import { JWKS } from '../src/auth/auth.module';
 import { parseEnv } from '../src/common/env';
 import { PrismaService } from '../src/common/prisma.service';
+import { DeliveriesController } from '../src/deliveries/deliveries.controller';
 import { OrdersController } from '../src/orders/orders.controller';
+import { CodBulkController } from '../src/payments/cod-bulk.controller';
+import { CodController } from '../src/payments/cod.controller';
+import { PaymentsController } from '../src/payments/payments.controller';
 import { createTestAuth } from './test-auth';
-import { createTwoTenants, expectCrossTenant404, withoutRequestId } from './tenant-isolation';
+import {
+  callRoute,
+  createTwoTenants,
+  expectCrossTenant404,
+  withoutRequestId,
+} from './tenant-isolation';
 import type { RouteUnderTest, Tenant, TwoTenants } from './tenant-isolation';
 
 // Fake people, numbers and products only.
@@ -120,10 +137,7 @@ beforeAll(async () => {
     .overrideProvider(JWKS)
     .useValue(auth.jwks)
     .compile();
-  app = moduleRef.createNestApplication<NestExpressApplication>({
-    bodyParser: false,
-    logger: false,
-  });
+  app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false, logger: false });
   configureApp(app, env);
   await app.init();
   server = app.getHttpServer();
@@ -164,11 +178,7 @@ const attacks: Attack[] = (['order', 'cancelledOrder'] as const).flatMap((which)
   {
     covers: 'PATCH /orders/:id',
     name: `edit ${which}`,
-    route: {
-      method: 'patch',
-      path: (id) => `${O}/${id}`,
-      body: { notes: 'Taken', discountAmount: '1' },
-    },
+    route: { method: 'patch', path: (id) => `${O}/${id}`, body: { notes: 'Taken', discountAmount: '1' } },
     target: (victim) => victim[which],
   },
   {
@@ -181,6 +191,61 @@ const attacks: Attack[] = (['order', 'cancelledOrder'] as const).flatMap((which)
     covers: 'POST /orders/:id/cancel',
     name: `cancel ${which}`,
     route: { method: 'post', path: (id) => `${O}/${id}/cancel`, body: { reason: 'Taken' } },
+    target: (victim) => victim[which],
+  },
+  // Payments (§7.7) and COD settlement (§7.8): money routes, so each call carries a key.
+  {
+    covers: 'GET /orders/:id/payments',
+    name: `read the payments of ${which}`,
+    route: { method: 'get', path: (id) => `${O}/${id}/payments` },
+    target: (victim) => victim[which],
+  },
+  {
+    covers: 'POST /orders/:id/payments',
+    name: `record a payment on ${which}`,
+    route: {
+      method: 'post',
+      path: (id) => `${O}/${id}/payments`,
+      body: { type: 'PAYMENT', method: 'CASH', amount: '1' },
+      idempotent: true,
+    },
+    target: (victim) => victim[which],
+  },
+  {
+    covers: 'POST /orders/:id/cod/settle',
+    name: `settle the COD of ${which}`,
+    route: { method: 'post', path: (id) => `${O}/${id}/cod/settle`, body: {}, idempotent: true },
+    target: (victim) => victim[which],
+  },
+  // The delivery (§7.2, §9.4).
+  {
+    covers: 'PATCH /orders/:id/delivery',
+    name: `edit the delivery of ${which}`,
+    route: { method: 'patch', path: (id) => `${O}/${id}/delivery`, body: { notes: 'Taken' } },
+    target: (victim) => victim[which],
+  },
+  {
+    covers: 'POST /orders/:id/delivery/dispatch',
+    name: `dispatch ${which}`,
+    route: { method: 'post', path: (id) => `${O}/${id}/delivery/dispatch`, body: { courierName: 'Taken' } },
+    target: (victim) => victim[which],
+  },
+  {
+    covers: 'POST /orders/:id/delivery/delivered',
+    name: `mark ${which} delivered`,
+    route: { method: 'post', path: (id) => `${O}/${id}/delivery/delivered`, body: {} },
+    target: (victim) => victim[which],
+  },
+  {
+    covers: 'POST /orders/:id/delivery/failed',
+    name: `mark the delivery of ${which} failed`,
+    route: { method: 'post', path: (id) => `${O}/${id}/delivery/failed`, body: { reason: 'Taken' } },
+    target: (victim) => victim[which],
+  },
+  {
+    covers: 'POST /orders/:id/delivery/returned',
+    name: `mark ${which} returned`,
+    route: { method: 'post', path: (id) => `${O}/${id}/delivery/returned`, body: { reason: 'Taken' } },
     target: (victim) => victim[which],
   },
 ]);
@@ -204,9 +269,7 @@ describe('IDs that are not UUIDs', () => {
   it.each(attacks.map((attack) => [attack.name, attack] as const))(
     'get the same 404: %s',
     async (_name, attack) => {
-      const { route } = attack;
-      const call = request(server)[route.method](route.path('not-a-uuid')).set(as(a.tenant));
-      const res = await (route.body === undefined ? call : call.send(route.body));
+      const res = await callRoute(server, a.tenant, attack.route, 'not-a-uuid');
       expect(res.status).toBe(404);
       expect(withoutRequestId(res.body)).toEqual({
         code: 'NOT_FOUND',
@@ -221,14 +284,10 @@ describe('IDs that are not UUIDs', () => {
 
 describe('GET /orders never shows another business’s orders', () => {
   const list = async (query: Record<string, string> = {}) =>
-    (await request(server).get(O).query(query).set(as(a.tenant)).expect(200))
-      .body as Page<OrderSummary>;
+    (await request(server).get(O).query(query).set(as(a.tenant)).expect(200)).body as Page<OrderSummary>;
 
   it('the unfiltered list holds exactly the caller’s own orders', async () => {
-    const own = await prisma.order.findMany({
-      where: { businessId: a.tenant.businessId },
-      select: { id: true },
-    });
+    const own = await prisma.order.findMany({ where: { businessId: a.tenant.businessId }, select: { id: true } });
     const page = await list({ pageSize: '100' });
     expect(page.items.map((order) => order.id).sort()).toEqual(own.map((order) => order.id).sort());
   });
@@ -302,19 +361,63 @@ describe('an order can’t point at another business’s records', () => {
   });
 });
 
+// ---------- COD across orders (§2.2, §9.4) ----------
+
+describe('COD across orders never reaches another business', () => {
+  /** Takes one of `owner`'s new COD orders to delivered: its COD is COLLECTED. */
+  async function collected(owner: Owned): Promise<string> {
+    const order = (await createOrder(owner.tenant, orderBody(owner)).expect(201)).body as OrderDetail;
+    const step = (path: string, body: object) =>
+      request(server).post(`${O}/${order.id}${path}`).set(as(owner.tenant)).send(body).expect(200);
+    await step('/status', { to: 'CONFIRMED' });
+    await step('/status', { to: 'READY' });
+    await step('/delivery/dispatch', { courierName: 'Domex' });
+    await step('/delivery/delivered', {});
+    return order.id;
+  }
+  const settle = (tenant: Tenant, orderIds: string[]) =>
+    request(server)
+      .post('/api/v1/cod/settle')
+      .set(as(tenant))
+      .set('Idempotency-Key', randomUUID())
+      .send({ orderIds });
+
+  it('GET /cod/awaiting lists only the caller’s own collected COD', async () => {
+    const mine = await collected(a);
+    const theirs = await collected(b);
+    const page = (
+      await request(server).get('/api/v1/cod/awaiting?pageSize=100').set(as(a.tenant)).expect(200)
+    ).body as Page<CodAwaitingItem>;
+    const ids = page.items.map((item) => item.orderId);
+    expect(ids).toContain(mine);
+    expect(ids).not.toContain(theirs);
+  });
+
+  it.each([
+    ['A settles B’s COD', () => [a, b] as const],
+    ['B settles A’s COD', () => [b, a] as const],
+  ])('POST /cod/settle: %s gets the standard 404, and nothing is written', async (_label, parties) => {
+    const [attacker, victim] = parties();
+    const foreign = await collected(victim);
+    const own = await collected(attacker);
+    const before = [await snapshot(attacker), await snapshot(victim)];
+    // Alone or hidden among the attacker's own orders, the answer is the same as for no order.
+    for (const orderIds of [[foreign], [own, foreign]]) {
+      const res = await settle(attacker.tenant, orderIds).expect(404);
+      const missing = await settle(attacker.tenant, [randomUUID()]).expect(404);
+      expect(withoutRequestId(res.body)).toEqual(withoutRequestId(missing.body));
+    }
+    expect([await snapshot(attacker), await snapshot(victim)]).toEqual(before);
+  });
+});
+
 // ---------- businessId sent by the client ----------
 
 describe('a businessId from the client is refused (400), and nothing is written', () => {
-  const rejected = {
-    code: 'VALIDATION_ERROR',
-    fieldErrors: { businessId: 'This field is not allowed.' },
-  };
+  const rejected = { code: 'VALIDATION_ERROR', fieldErrors: { businessId: 'This field is not allowed.' } };
 
   it.each([
-    [
-      'POST /orders',
-      () => createOrder(a.tenant, { ...orderBody(a), businessId: b.tenant.businessId }),
-    ],
+    ['POST /orders', () => createOrder(a.tenant, { ...orderBody(a), businessId: b.tenant.businessId })],
     [
       'PATCH /orders/:id',
       () =>
@@ -342,6 +445,32 @@ describe('a businessId from the client is refused (400), and nothing is written'
     [
       'GET /orders',
       () => request(server).get(O).query({ businessId: b.tenant.businessId }).set(as(a.tenant)),
+    ],
+    [
+      'POST /orders/:id/payments',
+      () =>
+        request(server)
+          .post(`${O}/${a.order}/payments`)
+          .set(as(a.tenant))
+          .set('Idempotency-Key', randomUUID())
+          .send({ type: 'PAYMENT', method: 'CASH', amount: '1', businessId: b.tenant.businessId }),
+    ],
+    [
+      'PATCH /orders/:id/delivery',
+      () =>
+        request(server)
+          .patch(`${O}/${a.order}/delivery`)
+          .set(as(a.tenant))
+          .send({ notes: 'Moved', businessId: b.tenant.businessId }),
+    ],
+    [
+      'POST /cod/settle',
+      () =>
+        request(server)
+          .post('/api/v1/cod/settle')
+          .set(as(a.tenant))
+          .set('Idempotency-Key', randomUUID())
+          .send({ orderIds: [a.order], businessId: b.tenant.businessId }),
     ],
   ] as const)('%s', async (_route, call) => {
     const before = [await snapshot(a), await snapshot(b)];
@@ -373,15 +502,20 @@ function declaredRoutes(controller: Type): string[] {
 }
 
 describe('coverage guard', () => {
-  /** Routes checked above that take no order ID (the list and create). */
-  const listAndCreateRoutes = ['GET /orders', 'POST /orders'];
+  /** Routes checked above that take no order ID: the list, create, and COD across orders. */
+  const noIdRoutes = ['GET /orders', 'POST /orders', 'GET /cod/awaiting', 'POST /cod/settle'];
+  const controllers = [
+    OrdersController,
+    PaymentsController,
+    CodController,
+    CodBulkController,
+    DeliveriesController,
+  ];
 
-  it('every order route is covered by this sweep', () => {
-    const declared = declaredRoutes(OrdersController).sort();
-    const covered = [
-      ...new Set([...attacks.map((attack) => attack.covers), ...listAndCreateRoutes]),
-    ].sort();
+  it('every order, payment, delivery and COD route is covered by this sweep', () => {
+    const declared = controllers.flatMap(declaredRoutes).sort();
+    const covered = [...new Set([...attacks.map((attack) => attack.covers), ...noIdRoutes])].sort();
     expect(declared.length).toBeGreaterThan(0);
-    expect(declared, 'add every new order route to the isolation sweep (C17)').toEqual(covered);
+    expect(declared, 'add every new route to the isolation sweep (C17, D9)').toEqual(covered);
   });
 });

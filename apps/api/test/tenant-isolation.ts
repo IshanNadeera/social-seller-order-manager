@@ -82,6 +82,15 @@ export interface RouteUnderTest {
   path: (id: string) => string;
   /** JSON body for write routes. Must be valid, so only the ID decides the outcome. */
   body?: object;
+  /** Money routes need an Idempotency-Key; each call gets a fresh one (§9.8). */
+  idempotent?: true;
+}
+
+/** `route` called with `id` as `as`, with a fresh Idempotency-Key where the route needs one. */
+export function callRoute(server: App, as: Tenant, route: RouteUnderTest, id: string) {
+  let req = request(server)[route.method](route.path(id)).set('Authorization', `Bearer ${as.token}`);
+  if (route.idempotent) req = req.set('Idempotency-Key', randomUUID());
+  return route.body === undefined ? req : req.send(route.body);
 }
 
 /**
@@ -95,12 +104,7 @@ export async function expectCrossTenant404(
   route: RouteUnderTest,
   foreignId: string,
 ): Promise<void> {
-  const call = (id: string) => {
-    const req = request(server)
-      [route.method](route.path(id))
-      .set('Authorization', `Bearer ${as.token}`);
-    return route.body === undefined ? req : req.send(route.body);
-  };
+  const call = (id: string) => callRoute(server, as, route, id);
   const foreign = await call(foreignId);
   const missing = await call(randomUUID());
   const where = `${route.method.toUpperCase()} ${route.path(':id')} as business ${as.businessId}`;
