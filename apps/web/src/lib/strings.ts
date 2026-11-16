@@ -226,6 +226,43 @@ export const strings = {
       loadFailed: 'We couldn’t load the recent orders.',
     },
   },
+  reports: {
+    title: 'Reports',
+    sales: 'Sales',
+    intro: 'What your orders were worth and the money you received, for the period you choose.',
+    loadFailed: 'We couldn’t load the sales report.',
+    totals: {
+      ordersCreated: 'Orders created',
+      cancelledHint: (cancelled: number) =>
+        cancelled === 1 ? '1 was cancelled.' : `${cancelled} were cancelled.`,
+      orderValue: 'Order value',
+      orderValueHint: 'Orders not cancelled. Not money received.',
+      averageOrderValue: 'Average order',
+      noAverage: '—',
+      netReceived: 'Money received (net)',
+      netReceivedHint: (received: string, refunds: string) =>
+        `${received} received, ${refunds} refunded.`,
+    },
+    byDay: {
+      title: 'By day',
+      date: 'Date',
+      orders: 'Orders',
+      orderValue: 'Order value',
+      netReceived: 'Received (net)',
+      empty: 'No orders or money in this period.',
+    },
+    bySource: {
+      title: 'By source',
+      orders: (count: number) => (count === 1 ? '1 order' : `${count} orders`),
+      empty: 'No orders in this period.',
+    },
+    topItems: {
+      title: 'Top items',
+      sku: (sku: string) => `SKU ${sku}`,
+      quantity: (count: number) => `${count} sold`,
+      empty: 'No items sold in this period.',
+    },
+  },
   notFound: {
     title: 'Page not found',
     body: 'We couldn’t find that page. It may have moved, or the link may be wrong.',

@@ -278,3 +278,30 @@ export interface DashboardSummary {
     netReceived: string;
   };
 }
+
+/**
+ * GET /reports/sales (§9.4, §2.2): a period's sales, by the §15 definitions. Money is a decimal
+ * string. "Order value" is what orders were worth, not money received.
+ */
+export interface SalesReport {
+  timeZone: string;
+  from: string;
+  to: string;
+  totals: {
+    ordersCreated: number;
+    cancelled: number;
+    /** Total of the orders created in the period, cancelled ones left out. Not revenue. */
+    orderValue: string;
+    /** Order value ÷ orders not cancelled; null when there were none. */
+    averageOrderValue: string | null;
+    paymentsReceived: string;
+    refunds: string;
+    netReceived: string;
+  };
+  /** Days with any orders or money, oldest first (local dates). */
+  byDay: { date: string; ordersCreated: number; orderValue: string; netReceived: string }[];
+  /** Orders not cancelled, by where they came from; largest order value first. */
+  bySource: { sourceChannel: SourceChannel; orders: number; orderValue: string }[];
+  /** The ten items with the largest value on orders not cancelled. */
+  topItems: { name: string; sku: string | null; quantity: number; value: string }[];
+}

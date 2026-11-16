@@ -3,26 +3,20 @@
 // received and COD still with couriers are separate tiles with their own labels and are never
 // added together: a delivered COD order isn't money received until it is settled.
 import type { DashboardSummary } from '@ssom/shared';
-import { useId, useState } from 'react';
-import type { ReactNode } from 'react';
+import { useId } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { ApiErrorMessage } from '../../components/ApiErrorMessage';
-import { FormAlert, SelectField, TextField, buttonClass, linkClass } from '../../components/form';
+import { FormAlert, buttonClass, linkClass } from '../../components/form';
 import { formatDate, formatLocalDate, formatPercent } from '../../lib/format';
 import { formatMoney } from '../../lib/money';
 import { strings } from '../../lib/strings';
 import { useBusinessCurrency, useBusinessTimeZone } from '../account/use-business';
 import { PaymentBadge, StageLabel } from '../orders/OrderBadges';
 import { useDashboardSummary, useRecentOrders } from './api';
-import {
-  RANGE_PRESETS,
-  presetOf,
-  presetRange,
-  rangeProblem,
-  readRange,
-  todayIn,
-} from './dashboard-range';
-import type { DateRange, RangePreset } from './dashboard-range';
+import { rangeProblem, readRange, todayIn } from './dashboard-range';
+import type { DateRange } from './dashboard-range';
+import { PeriodPicker } from './PeriodPicker';
+import { Group, Tile } from './Tiles';
 
 const s = strings.dashboard;
 const orderPath = (id: string) => `/orders/${encodeURIComponent(id)}`;
@@ -79,115 +73,6 @@ export function DashboardPage() {
 
       <RecentOrders />
     </section>
-  );
-}
-
-function PeriodPicker({
-  range,
-  today,
-  problem,
-  onChange,
-}: {
-  range: DateRange;
-  today: string;
-  problem: string | null;
-  onChange: (range: DateRange) => void;
-}) {
-  const preset = presetOf(range, today);
-  // "Choose dates" stays open while the seller types, even if the dates match a preset.
-  const [choosing, setChoosing] = useState(preset === null);
-  const value: RangePreset | 'custom' = choosing || preset === null ? 'custom' : preset;
-  const p = s.period;
-
-  return (
-    <fieldset className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-      <legend className="px-1 font-semibold">{p.legend}</legend>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <SelectField
-          label={p.preset}
-          value={value}
-          onChange={(event) => {
-            const next = event.target.value as RangePreset | 'custom';
-            setChoosing(next === 'custom');
-            if (next !== 'custom') onChange(presetRange(next, today));
-          }}
-        >
-          {RANGE_PRESETS.map((key) => (
-            <option key={key} value={key}>
-              {p.presets[key]}
-            </option>
-          ))}
-          <option value="custom">{p.presets.custom}</option>
-        </SelectField>
-        {value === 'custom' && (
-          <>
-            <TextField
-              label={p.from}
-              type="date"
-              value={range.from}
-              max={today}
-              onChange={(event) => {
-                if (event.target.value !== '') onChange({ ...range, from: event.target.value });
-              }}
-            />
-            <TextField
-              label={p.to}
-              type="date"
-              value={range.to}
-              max={today}
-              error={problem ?? undefined}
-              onChange={(event) => {
-                if (event.target.value !== '') onChange({ ...range, to: event.target.value });
-              }}
-            />
-          </>
-        )}
-      </div>
-    </fieldset>
-  );
-}
-
-/** One group of tiles, named by its heading (a landmark screen readers can jump to). */
-function Group({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
-  const headingId = useId();
-  return (
-    <section aria-labelledby={headingId} className="space-y-3">
-      <h2 id={headingId} className="text-lg font-semibold">
-        {title}
-        {note !== undefined && (
-          <span className="ml-2 text-sm font-normal text-slate-600">{note}</span>
-        )}
-      </h2>
-      <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{children}</dl>
-    </section>
-  );
-}
-
-/** One figure: its label, the value, and an optional explanation and link. */
-function Tile({
-  label,
-  value,
-  hint,
-  to,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  to?: string;
-}) {
-  return (
-    <div className="space-y-1 rounded-xl border border-slate-200 bg-white p-4">
-      <dt className="text-sm text-slate-600">{label}</dt>
-      <dd className="text-2xl font-semibold text-slate-900">{value}</dd>
-      {hint !== undefined && <dd className="text-sm text-slate-600">{hint}</dd>}
-      {to !== undefined && (
-        <dd>
-          <Link to={to} className={`${linkClass} text-sm`}>
-            {s.tiles.open(label)}
-          </Link>
-        </dd>
-      )}
-    </div>
   );
 }
 

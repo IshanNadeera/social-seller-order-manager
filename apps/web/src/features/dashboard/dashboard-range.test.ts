@@ -37,6 +37,8 @@ describe('dashboard period (§6.2)', () => {
     for (const query of ['', 'from=2026-10-01', 'from=2026-02-30&to=2026-03-01']) {
       expect(readRange(new URLSearchParams(query), today)).toEqual({ from: today, to: today });
     }
+    const month = { from: '2026-11-01', to: today };
+    expect(readRange(new URLSearchParams(''), today, month)).toEqual(month);
   });
 
   it('uses the API’s rules for a range', () => {

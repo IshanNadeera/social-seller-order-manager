@@ -12,6 +12,7 @@ import { OnboardingModule } from './onboarding/onboarding.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ProductsModule } from './products/products.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({})
 export class AppModule {
@@ -31,6 +32,7 @@ export class AppModule {
         PaymentsModule,
         DeliveriesModule,
         DashboardModule,
+        ReportsModule,
       ],
     };
   }

@@ -42,12 +42,16 @@ export function presetOf(range: DateRange, today: string): RangePreset | null {
   );
 }
 
-/** The period in the URL, or today when the URL has none (or only half of one). */
-export function readRange(search: URLSearchParams, today: string): DateRange {
+/** The period in the URL, or `fallback` (today unless given) when it has none or only half of one. */
+export function readRange(
+  search: URLSearchParams,
+  today: string,
+  fallback: DateRange = { from: today, to: today },
+): DateRange {
   const from = search.get('from');
   const to = search.get('to');
   if (from !== null && to !== null && isIsoDate(from) && isIsoDate(to)) return { from, to };
-  return { from: today, to: today };
+  return fallback;
 }
 
 /** The first problem with `range` by the API's own rules, or null if it can be asked for. */
