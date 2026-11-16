@@ -15,6 +15,7 @@ import { useDebouncedValue } from '../../lib/use-debounced-value';
 import { listApiPath } from '../../lib/use-list-params';
 import { useBusinessId } from '../account/use-business';
 import { customerKeys } from '../customers/api';
+import { dashboardKeys } from '../dashboard/api';
 import { productKeys } from '../products/api';
 import { orderListApiPath } from './order-list-params';
 import type { OrderListParams } from './order-list-params';
@@ -131,6 +132,7 @@ export function useOrderSaved() {
     void queryClient.invalidateQueries({ queryKey: [...orderKeys.all(businessId), 'list'] });
     void queryClient.invalidateQueries({ queryKey: [...orderKeys.all(businessId), 'customer'] });
     void queryClient.invalidateQueries({ queryKey: codKeys.all(businessId) });
+    void queryClient.invalidateQueries({ queryKey: dashboardKeys.all(businessId) });
   };
 }
 

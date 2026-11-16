@@ -99,7 +99,8 @@ describe('log out', () => {
     auth.signOut.mockResolvedValueOnce({ error: new Error('network') as never });
     renderApp('/', auth);
     await userEvent.click(await screen.findByRole('button', { name: strings.layout.logOut }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(strings.layout.logOutFailed);
+    // The page behind may show alerts of its own; this one says the log-out failed.
+    expect(await screen.findByText(strings.layout.logOutFailed)).toHaveAttribute('role', 'alert');
     expect(await dashboardHeading()).toBeInTheDocument();
   });
 });

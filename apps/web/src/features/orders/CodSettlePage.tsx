@@ -26,6 +26,7 @@ import { formatDate } from '../../lib/format';
 import { formatMoney } from '../../lib/money';
 import { strings } from '../../lib/strings';
 import { useBusinessCurrency, useBusinessId, useBusinessTimeZone } from '../account/use-business';
+import { dashboardKeys } from '../dashboard/api';
 import { codKeys, orderKeys, useCodAwaiting } from './api';
 import { codBulkSettleFormSchema, emptyCodSettleForm, localToday } from './payment-form';
 import type { CodSettleFormValues } from './payment-form';
@@ -277,6 +278,7 @@ function SettleSheet({
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: codKeys.all(businessId) });
       void queryClient.invalidateQueries({ queryKey: orderKeys.all(businessId) });
+      void queryClient.invalidateQueries({ queryKey: dashboardKeys.all(businessId) });
       onDone(result);
     },
     onError: (error) => {

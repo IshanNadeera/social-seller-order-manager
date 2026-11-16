@@ -30,6 +30,7 @@ import {
 import { AddressFields } from '../customers/AddressFields';
 import type { AddressFieldName } from '../customers/AddressFields';
 import { customerKeys } from '../customers/api';
+import { dashboardKeys } from '../dashboard/api';
 import { orderKeys } from './api';
 import { CustomerPicker } from './CustomerPicker';
 import { ItemLine } from './ItemLine';
@@ -151,6 +152,7 @@ export function OrderCreatePage() {
     onSuccess: (order) => {
       void queryClient.invalidateQueries({ queryKey: orderKeys.all(businessId) });
       void queryClient.invalidateQueries({ queryKey: customerKeys.all(businessId) });
+      void queryClient.invalidateQueries({ queryKey: dashboardKeys.all(businessId) });
       void navigate(`/orders/${encodeURIComponent(order.id)}`);
     },
     onError: (error) => {

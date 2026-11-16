@@ -23,3 +23,17 @@ export function formatDateTime(iso: string, timeZone: string): string {
     timeZone,
   }).format(new Date(iso));
 }
+
+/** A calendar date already in the business timezone ("2026-10-20" → "20 Oct 2026"). */
+export function formatLocalDate(date: string): string {
+  // Midday UTC is the same calendar day everywhere the date could be read.
+  return formatDate(`${date}T12:00:00Z`, 'UTC');
+}
+
+/** A share such as 0.125 → "12.5%". */
+export function formatPercent(share: number): string {
+  return new Intl.NumberFormat(strings.locale, {
+    style: 'percent',
+    maximumFractionDigits: 1,
+  }).format(share);
+}

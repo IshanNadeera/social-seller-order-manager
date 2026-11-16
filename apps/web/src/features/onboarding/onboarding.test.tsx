@@ -60,6 +60,10 @@ describe('onboarding', () => {
       status: 201,
       body: memberMe({ name: 'Nimali Fashions' }),
     }));
+    api.on('GET', '/orders', () => ({
+      status: 200,
+      body: { items: [], page: 1, pageSize: 5, total: 0 },
+    }));
     const router = renderApp('/onboarding', auth, api);
     await screen.findByRole('heading', { name: s.title });
     await userEvent.type(field(s.businessName), '  Nimali Fashions ');
@@ -69,7 +73,8 @@ describe('onboarding', () => {
     expect(
       await screen.findByRole('heading', { name: strings.dashboard.title }),
     ).toBeInTheDocument();
-    expect(screen.getByText(strings.dashboard.empty)).toBeInTheDocument();
+    // A new business has no orders yet.
+    expect(await screen.findByText(strings.dashboard.recent.empty)).toBeInTheDocument();
     // Shown in the desktop sidebar and the mobile top bar (CSS shows one of them).
     expect(screen.getAllByText('Nimali Fashions').length).toBeGreaterThan(0);
     expect(router.state.location.pathname).toBe('/');
