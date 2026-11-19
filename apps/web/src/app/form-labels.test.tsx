@@ -106,6 +106,71 @@ const FORMS: FormCase[] = [
       await userEvent.click(screen.getByRole('button', { name: strings.orders.form.item.add }));
     },
   },
+  {
+    // The figures may fail to load here; the period picker is what is checked.
+    name: 'dashboard period picker, choosing dates',
+    path: '/?from=2026-10-01&to=2026-10-31',
+    open: async () => {
+      await screen.findByLabelText(strings.dashboard.period.from);
+    },
+  },
+  {
+    name: 'sales report period picker, choosing dates',
+    path: '/reports?from=2026-10-01&to=2026-10-31',
+    open: async () => {
+      await screen.findByLabelText(strings.dashboard.period.from);
+    },
+  },
+  {
+    name: 'settings: business, password',
+    path: '/settings',
+    api: (api) =>
+      api.on('GET', '/business', () => ({
+        status: 200,
+        body: {
+          id: 'b1',
+          name: 'Nimali Fashions',
+          contactPhone: null,
+          orderPrefix: 'NIM',
+          currency: 'LKR',
+          timezone: 'Asia/Colombo',
+          defaultDeliveryFee: '350.00',
+          nextOrderSequence: 1,
+        },
+      })),
+    open: async () => {
+      await screen.findByLabelText(strings.settings.business.name);
+    },
+  },
+  {
+    name: 'COD to settle, with the settle sheet open',
+    path: '/cod',
+    api: (api) =>
+      api.on('GET', '/cod/awaiting', () => ({
+        status: 200,
+        body: {
+          items: [
+            {
+              orderId: '0f1e2d3c-4b5a-4968-8776-5a4b3c2d1e01',
+              orderNumber: 'NIM-0001',
+              recipientName: 'Customer 1',
+              courierName: 'Domex',
+              trackingNumber: null,
+              codAmount: '1350.00',
+              deliveredAt: null,
+            },
+          ],
+          page: 1,
+          pageSize: 50,
+          total: 1,
+        },
+      })),
+    open: async () => {
+      await userEvent.click(await screen.findByLabelText(strings.orders.cod.selectAll));
+      await userEvent.click(screen.getByRole('button', { name: strings.orders.cod.settle }));
+      await screen.findByRole('dialog', { name: strings.orders.cod.sheet.title });
+    },
+  },
 ];
 
 describe('every form control has a label (§6.9)', () => {

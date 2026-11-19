@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form';
 import type { UseFormRegisterReturn } from 'react-hook-form';
 import { Link, useNavigate, useParams } from 'react-router';
 import { ApiErrorMessage } from '../../components/ApiErrorMessage';
+import { Badge } from '../../components/Badge';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import {
   FormAlert,
@@ -272,8 +273,10 @@ function ArchivedProduct({ product }: { product: ProductView }) {
   const none = strings.common.none;
   return (
     <Page title={product.name}>
-      <p className="w-fit rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
-        {s.edit.archivedBadge}
+      <p>
+        <Badge icon="▢" tone="neutral">
+          {s.edit.archivedBadge}
+        </Badge>
       </p>
       <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
         {s.edit.archivedBanner}

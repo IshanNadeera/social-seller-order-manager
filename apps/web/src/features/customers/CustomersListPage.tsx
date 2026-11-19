@@ -1,6 +1,7 @@
 import type { CustomerSummary } from '@ssom/shared';
 import { Link } from 'react-router';
 import { ApiErrorMessage } from '../../components/ApiErrorMessage';
+import { Badge } from '../../components/Badge';
 import { CheckboxField, FormAlert, buttonClass, linkClass } from '../../components/form';
 import { Pagination } from '../../components/Pagination';
 import { SearchBox } from '../../components/SearchBox';
@@ -104,9 +105,9 @@ function EmptyState({ params, onClear }: { params: CustomerListParams; onClear: 
 
 function ArchivedTag() {
   return (
-    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-700">
+    <Badge icon="▢" tone="neutral">
       {s.archived}
-    </span>
+    </Badge>
   );
 }
 

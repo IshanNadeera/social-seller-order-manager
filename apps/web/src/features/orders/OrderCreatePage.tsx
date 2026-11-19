@@ -243,7 +243,7 @@ export function OrderCreatePage() {
                 <input
                   type="radio"
                   value={type}
-                  className="size-5 accent-blue-700"
+                  className="size-5 accent-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
                   {...form.register('fulfilmentType')}
                 />
                 {strings.fulfilmentType[type]}

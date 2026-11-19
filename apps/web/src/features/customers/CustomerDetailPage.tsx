@@ -5,6 +5,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import { ApiErrorMessage } from '../../components/ApiErrorMessage';
+import { Badge } from '../../components/Badge';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { FormAlert, buttonClass, linkClass } from '../../components/form';
 import { isApiError } from '../../lib/api-client';
@@ -179,9 +180,9 @@ function Detail({ term, children }: { term: string; children: ReactNode }) {
 
 function ArchivedBadge() {
   return (
-    <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+    <Badge icon="▢" tone="neutral">
       {s.detail.archivedBadge}
-    </span>
+    </Badge>
   );
 }
 
@@ -340,9 +341,9 @@ function AddressCard({ address, actions }: { address: CustomerAddressView; actio
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="font-semibold">{address.label ?? address.recipientName}</h3>
         {address.isDefault && (
-          <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+          <Badge icon="★" tone="info">
             {s.addresses.default}
-          </span>
+          </Badge>
         )}
       </div>
       <address className="text-slate-800 not-italic">

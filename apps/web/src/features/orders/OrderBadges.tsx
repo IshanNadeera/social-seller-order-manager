@@ -1,33 +1,47 @@
 // The order's stage and payment status as small labels, on the list and the details page.
+// §6.9: each has text and an icon, never colour alone (components/Badge.tsx).
 import type { OrderStage, PaymentStatus } from '@ssom/shared';
+import { Badge } from '../../components/Badge';
+import type { BadgeTone } from '../../components/Badge';
 import { strings } from '../../lib/strings';
+
+const STAGE_BADGE: Record<OrderStage, { icon: string; tone: BadgeTone }> = {
+  NEW: { icon: '✦', tone: 'info' },
+  AWAITING_CONFIRMATION: { icon: '…', tone: 'warning' },
+  CONFIRMED: { icon: '✓', tone: 'info' },
+  PREPARING: { icon: '⚙', tone: 'info' },
+  READY_TO_SEND: { icon: '▣', tone: 'info' },
+  READY_FOR_PICKUP: { icon: '▣', tone: 'info' },
+  OUT_FOR_DELIVERY: { icon: '→', tone: 'info' },
+  DELIVERY_FAILED: { icon: '!', tone: 'warning' },
+  COMPLETED: { icon: '✔', tone: 'good' },
+  CANCELLED: { icon: '✕', tone: 'bad' },
+  RETURNED: { icon: '↩', tone: 'neutral' },
+};
 
 /** The display stage (§7.3), one label from the order and delivery statuses. */
 export function StageLabel({ stage }: { stage: OrderStage }) {
+  const badge = STAGE_BADGE[stage];
   return (
-    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-800">
+    <Badge icon={badge.icon} tone={badge.tone}>
       {strings.orderStage[stage]}
-    </span>
+    </Badge>
   );
 }
 
-/** §6.9: status badges use text and an icon, not colour alone. */
-const PAYMENT_BADGE: Record<PaymentStatus, { icon: string; className: string }> = {
-  UNPAID: { icon: '○', className: 'bg-amber-50 text-amber-900 ring-amber-200' },
-  PARTIALLY_PAID: { icon: '◐', className: 'bg-sky-50 text-sky-900 ring-sky-200' },
-  PAID: { icon: '✓', className: 'bg-green-50 text-green-900 ring-green-200' },
-  PARTIALLY_REFUNDED: { icon: '↺', className: 'bg-slate-100 text-slate-800 ring-slate-300' },
-  REFUNDED: { icon: '↺', className: 'bg-slate-100 text-slate-800 ring-slate-300' },
+const PAYMENT_BADGE: Record<PaymentStatus, { icon: string; tone: BadgeTone }> = {
+  UNPAID: { icon: '○', tone: 'warning' },
+  PARTIALLY_PAID: { icon: '◐', tone: 'info' },
+  PAID: { icon: '✓', tone: 'good' },
+  PARTIALLY_REFUNDED: { icon: '↺', tone: 'neutral' },
+  REFUNDED: { icon: '↺', tone: 'neutral' },
 };
 
 export function PaymentBadge({ status }: { status: PaymentStatus }) {
   const badge = PAYMENT_BADGE[status];
   return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${badge.className}`}
-    >
-      <span aria-hidden="true">{badge.icon}</span>
+    <Badge icon={badge.icon} tone={badge.tone}>
       {strings.paymentStatus[status]}
-    </span>
+    </Badge>
   );
 }
