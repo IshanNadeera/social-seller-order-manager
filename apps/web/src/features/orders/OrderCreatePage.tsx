@@ -33,6 +33,7 @@ import { customerKeys } from '../customers/api';
 import { dashboardKeys } from '../dashboard/api';
 import { orderKeys } from './api';
 import { CustomerPicker } from './CustomerPicker';
+import { DuplicateWarning } from './DuplicateWarning';
 import { ItemLine } from './ItemLine';
 import {
   DELIVERY_FIELDS,
@@ -397,6 +398,7 @@ export function OrderCreatePage() {
             <dd className="text-right font-semibold">{money(preview.balance)}</dd>
           </dl>
           <p className="text-sm text-slate-600">{f.summary.note}</p>
+          <DuplicateWarning customerId={values.customerId} total={preview.total} />
           {save.isError && (
             <FormAlert tone="error">
               <p className="font-semibold">{f.failed}</p>

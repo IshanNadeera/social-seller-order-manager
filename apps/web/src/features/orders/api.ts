@@ -7,6 +7,7 @@ import type {
   OrderSummary,
   Page,
   PaymentView,
+  PossibleDuplicate,
   ProductView,
 } from '@ssom/shared';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -150,6 +151,28 @@ export function useOrderList(params: OrderListParams) {
 
 /** How long typing pauses before a search is sent. */
 export const SEARCH_DELAY_MS = 250;
+
+/** How long the total must stay the same before the duplicate check runs. */
+export const DUPLICATE_CHECK_DELAY_MS = 500;
+
+/**
+ * GET /orders/possible-duplicates (§2.2) for the order being entered: nothing is asked until a
+ * customer is chosen and the total has settled. Only ever a warning.
+ */
+export function usePossibleDuplicates(customerId: string, total: string | null) {
+  const api = useApi();
+  const businessId = useBusinessId();
+  const settledTotal = useDebouncedValue(total, DUPLICATE_CHECK_DELAY_MS);
+  return useQuery({
+    queryKey: [...orderKeys.all(businessId), 'duplicates', customerId, settledTotal],
+    queryFn: ({ signal }) =>
+      api.get<PossibleDuplicate[]>(
+        `/orders/possible-duplicates?customerId=${encodeURIComponent(customerId)}&total=${settledTotal ?? ''}`,
+        { signal },
+      ),
+    enabled: customerId !== '' && settledTotal !== null,
+  });
+}
 
 /** Active customers matching `text` (name or phone); nothing is fetched for blank text. */
 export function useCustomerSearch(text: string) {

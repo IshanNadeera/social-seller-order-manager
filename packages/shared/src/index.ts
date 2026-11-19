@@ -18,6 +18,7 @@ export * from './schemas/business.js';
 export * from './schemas/customers.js';
 export * from './schemas/products.js';
 export * from './schemas/orders.js';
+export * from './schemas/duplicates.js';
 export * from './schemas/payments.js';
 export * from './schemas/deliveries.js';
 export * from './schemas/dashboard.js';

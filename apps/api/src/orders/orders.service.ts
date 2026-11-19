@@ -11,6 +11,7 @@ import {
 import type {
   CodStatus,
   CustomerOrdersQuery,
+  DuplicateCheckQuery,
   EditGroup,
   OrderCreateInput,
   OrderDetail,
@@ -20,6 +21,7 @@ import type {
   OrderSummary,
   OrderUpdateInput,
   Page,
+  PossibleDuplicate,
 } from '@ssom/shared';
 import type { AuthContext } from '../auth/auth-context';
 import { PrismaService } from '../common/prisma.service';
@@ -28,6 +30,7 @@ import { lockActiveCustomer } from '../customers/customer-lock';
 import type { Prisma } from '../generated/prisma/client';
 import { recalculatePaymentSummary } from '../payments/payment-summary';
 import { OrderCalculationError, calculateBalance, calculateOrderTotals } from './order-calculator';
+import { possibleDuplicates } from './order-duplicates';
 import { refuse } from './order-errors';
 import { lockOrder } from './order-lock';
 import { allocateOrderNumber } from './order-number';
@@ -67,6 +70,11 @@ const fromCents = (value: bigint) => `${value / 100n}.${String(value % 100n).pad
 @Injectable()
 export class OrdersService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /** GET /orders/possible-duplicates (§2.2): similar recent orders for the same phone. */
+  possibleDuplicates(auth: AuthContext, query: DuplicateCheckQuery): Promise<PossibleDuplicate[]> {
+    return possibleDuplicates(this.prisma, auth, query);
+  }
 
   /** GET /orders (§6.3, §9.5): filtered, searched, newest first, at most 100 per page. */
   async list(auth: AuthContext, query: OrderListQuery): Promise<Page<OrderSummary>> {

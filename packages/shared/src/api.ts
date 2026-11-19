@@ -29,6 +29,15 @@ export interface MeBusiness {
   defaultDeliveryFee: string;
 }
 
+/** GET /orders/possible-duplicates (§2.2): a recent order like the one being entered. */
+export interface PossibleDuplicate {
+  id: string;
+  orderNumber: string;
+  createdAt: string;
+  totalAmount: string;
+  stage: OrderStage;
+}
+
 /** GET and PATCH /business (§6.8, §9.1): the business profile. */
 export interface BusinessView {
   id: string;

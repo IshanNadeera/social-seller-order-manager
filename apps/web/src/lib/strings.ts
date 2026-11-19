@@ -938,6 +938,14 @@ export const strings = {
         balance: 'Balance due',
         note: 'A preview. The final amounts are calculated when you save.',
       },
+      duplicate: {
+        title: 'This may be a duplicate',
+        body: 'An order with a similar total was made for this customer’s phone in the last 30 minutes. Check it isn’t the same order. You can still save.',
+        listLabel: 'Similar recent orders',
+        item: (orderNumber: string, total: string, minutes: number) =>
+          `${orderNumber} · ${total} · ${minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`}`,
+        open: (orderNumber: string) => `Open ${orderNumber} in a new tab`,
+      },
       submit: 'Save order',
       pending: 'Saving order…',
       failed: 'The order wasn’t saved. Everything you entered is still here.',

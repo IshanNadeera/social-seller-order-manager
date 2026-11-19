@@ -438,6 +438,46 @@ describe('COD across orders never reaches another business', () => {
   );
 });
 
+// ---------- Possible duplicates (§2.2) ----------
+
+describe('the duplicate-order check never reaches another business', () => {
+  const check = (tenant: Tenant, customerId: string, total: string) =>
+    request(server).get(`${O}/possible-duplicates`).query({ customerId, total }).set(as(tenant));
+
+  it.each([
+    ['A asks about B’s customer', () => [a, b] as const],
+    ['B asks about A’s customer', () => [b, a] as const],
+  ])('%s: the standard 404', async (_label, parties) => {
+    const [attacker, victim] = parties();
+    const foreign = await check(attacker.tenant, victim.customer, '100').expect(404);
+    const missing = await check(attacker.tenant, randomUUID(), '100').expect(404);
+    expect(withoutRequestId(foreign.body)).toEqual(withoutRequestId(missing.body));
+  });
+
+  it('another business’s order for the same phone and total is never listed', async () => {
+    // B has a customer with A's customer's phone, and has just taken an order for them.
+    const { phoneNormalized, phoneDisplay } = await prisma.customer.findUniqueOrThrow({
+      where: { id: a.customer },
+    });
+    const twin = await prisma.customer.create({
+      data: { businessId: b.tenant.businessId, name: 'Same Phone', phoneNormalized, phoneDisplay },
+    });
+    const theirs = (
+      await createOrder(
+        b.tenant,
+        orderBody(b, {
+          customerId: twin.id,
+          fulfilmentType: 'PICKUP',
+          paymentMethod: 'CASH',
+          delivery: undefined,
+        }),
+      ).expect(201)
+    ).body as OrderDetail;
+    const res = await check(a.tenant, a.customer, theirs.totalAmount).expect(200);
+    expect((res.body as { id: string }[]).map((order) => order.id)).not.toContain(theirs.id);
+  });
+});
+
 // ---------- businessId sent by the client ----------
 
 describe('a businessId from the client is refused (400), and nothing is written', () => {
@@ -536,7 +576,13 @@ function declaredRoutes(controller: Type): string[] {
 
 describe('coverage guard', () => {
   /** Routes checked above that take no order ID: the list, create, and COD across orders. */
-  const noIdRoutes = ['GET /orders', 'POST /orders', 'GET /cod/awaiting', 'POST /cod/settle'];
+  const noIdRoutes = [
+    'GET /orders',
+    'POST /orders',
+    'GET /orders/possible-duplicates',
+    'GET /cod/awaiting',
+    'POST /cod/settle',
+  ];
   const controllers = [
     OrdersController,
     PaymentsController,

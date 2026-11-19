@@ -11,6 +11,7 @@ import {
   Res,
 } from '@nestjs/common';
 import {
+  duplicateCheckQuerySchema,
   orderCancelSchema,
   orderCreateSchema,
   orderEventsQuerySchema,
@@ -19,6 +20,7 @@ import {
   orderUpdateSchema,
 } from '@ssom/shared';
 import type {
+  DuplicateCheckQuery,
   OrderCancelInput,
   OrderCreateInput,
   OrderDetail,
@@ -29,6 +31,7 @@ import type {
   OrderSummary,
   OrderUpdateInput,
   Page,
+  PossibleDuplicate,
 } from '@ssom/shared';
 import type { Response } from 'express';
 import { CurrentAuth } from '../auth/auth-context';
@@ -57,6 +60,19 @@ export class OrdersController {
     @Query(new ZodQueryPipe(orderListQuerySchema)) query: OrderListQuery,
   ): Promise<Page<OrderSummary>> {
     return this.orders.list(auth, query);
+  }
+
+  /**
+   * Recent orders like the one being entered (§2.2): same customer phone, similar total, within
+   * 30 minutes. Only a warning for the order form. Declared before ':id' so it isn't read as one.
+   */
+  @Get('possible-duplicates')
+  @Header('Cache-Control', 'no-store')
+  possibleDuplicates(
+    @CurrentAuth() auth: AuthContext,
+    @Query(new ZodQueryPipe(duplicateCheckQuerySchema)) query: DuplicateCheckQuery,
+  ): Promise<PossibleDuplicate[]> {
+    return this.orders.possibleDuplicates(auth, query);
   }
 
   /** One order with items, delivery and payment summary (§9.4). */
