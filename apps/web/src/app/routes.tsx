@@ -19,10 +19,9 @@ import { OrdersListPage } from '../features/orders/OrdersListPage';
 import { ProductCreatePage, ProductEditPage } from '../features/products/ProductFormPages';
 import { ProductsListPage } from '../features/products/ProductsListPage';
 import { ReportsPage } from '../features/reports/ReportsPage';
-import { strings } from '../lib/strings';
+import { SettingsPage } from '../features/settings/SettingsPage';
 import { MorePage } from './MorePage';
 import { NotFoundPage } from './NotFoundPage';
-import { PlaceholderPage } from './PlaceholderPage';
 import { RootLayout } from './RootLayout';
 
 /**
@@ -65,8 +64,6 @@ export const routes: RouteObject[] = [
             element: <RootLayout />,
             children: [
               { index: true, element: <DashboardPage /> },
-              // A placeholder until its task lands (settings E5), so every navigation link
-              // leads somewhere.
               { path: 'orders', element: <OrdersListPage /> },
               { path: 'orders/new', element: <OrderCreatePage /> },
               { path: 'orders/:orderId', element: <OrderDetailPage /> },
@@ -79,7 +76,7 @@ export const routes: RouteObject[] = [
               { path: 'products/new', element: <ProductCreatePage /> },
               { path: 'products/:productId', element: <ProductEditPage /> },
               { path: 'reports', element: <ReportsPage /> },
-              { path: 'settings', element: <PlaceholderPage title={strings.nav.settings} /> },
+              { path: 'settings', element: <SettingsPage /> },
               { path: 'more', element: <MorePage /> },
               { path: '*', element: <NotFoundPage /> },
             ],

@@ -29,6 +29,21 @@ export interface MeBusiness {
   defaultDeliveryFee: string;
 }
 
+/** GET and PATCH /business (§6.8, §9.1): the business profile. */
+export interface BusinessView {
+  id: string;
+  name: string;
+  contactPhone: string | null;
+  /** 2–6 uppercase letters or digits, e.g. "NIM". */
+  orderPrefix: string;
+  /** LKR; read-only in the MVP. */
+  currency: string;
+  timezone: string;
+  defaultDeliveryFee: string;
+  /** The sequence the next order will get, for the prefix preview (e.g. 42 → NIM-0042). */
+  nextOrderSequence: number;
+}
+
 /** GET /api/v1/me (§9.1). */
 export interface MeResponse {
   user: {
