@@ -168,10 +168,19 @@ function RecentOrders() {
       </div>
       {recent.data === undefined ? (
         recent.isError ? (
-          <FormAlert tone="error">
-            <p className="font-semibold">{r.loadFailed}</p>
-            <ApiErrorMessage error={recent.error} />
-          </FormAlert>
+          <div className="space-y-3">
+            <FormAlert tone="error">
+              <p className="font-semibold">{r.loadFailed}</p>
+              <ApiErrorMessage error={recent.error} />
+            </FormAlert>
+            <button
+              type="button"
+              className={buttonClass.secondary}
+              onClick={() => void recent.refetch()}
+            >
+              {strings.common.retry}
+            </button>
+          </div>
         ) : (
           <p className="text-slate-600">{strings.common.loading}</p>
         )

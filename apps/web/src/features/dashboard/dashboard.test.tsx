@@ -141,6 +141,26 @@ describe('dashboard figures (§6.2)', () => {
   });
 });
 
+describe('recent orders failing (§2.2)', () => {
+  it('says so and can be tried again', async () => {
+    let down = true;
+    setup('/', [recent], (api) =>
+      api.on('GET', '/orders', () =>
+        down
+          ? errorReply(503, 'UNAVAILABLE', 'Try again.')
+          : { status: 200, body: { items: [recent], page: 1, pageSize: 5, total: 1 } },
+      ),
+    );
+    const section = within(await screen.findByRole('region', { name: s.sections.recent }));
+    expect(
+      await section.findByText(s.recent.loadFailed, {}, { timeout: 4000 }),
+    ).toBeInTheDocument();
+    down = false;
+    await userEvent.click(section.getByRole('button', { name: strings.common.retry }));
+    expect(await section.findByRole('link', { name: /NIM-0042/ })).toBeInTheDocument();
+  });
+});
+
 describe('the period picker (§6.2)', () => {
   it('a preset asks for its dates and keeps them in the URL', async () => {
     const { api, router } = setup();

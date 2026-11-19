@@ -58,7 +58,19 @@ export function CustomerPicker({
         onChange={(event) => setText(event.target.value)}
         onKeyDown={keepEnterFromSubmitting}
       />
-      {search.isError && q !== '' && <p className="text-sm text-red-700">{f.searchFailed}</p>}
+      {q !== '' && search.isError && (
+        <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-red-700">
+          <span>{f.searchFailed}</span>
+          <button type="button" className={buttonClass.quiet} onClick={() => void search.refetch()}>
+            {strings.common.retry}
+          </button>
+        </div>
+      )}
+      {q !== '' && search.isFetching && !search.isError && (
+        <p role="status" className="text-sm text-slate-600">
+          {f.searching}
+        </p>
+      )}
       {results !== undefined &&
         (results.length === 0 ? (
           <p role="status" className="text-sm text-slate-600">

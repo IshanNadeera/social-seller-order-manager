@@ -95,7 +95,9 @@ describe('duplicate-order warning (§2.2)', () => {
     expect(save).toBeEnabled();
     await userEvent.click(save);
     await waitFor(() =>
-      expect(api.calls.some((call) => call.method === 'POST' && call.path === '/orders')).toBe(true),
+      expect(api.calls.some((call) => call.method === 'POST' && call.path === '/orders')).toBe(
+        true,
+      ),
     );
   });
 

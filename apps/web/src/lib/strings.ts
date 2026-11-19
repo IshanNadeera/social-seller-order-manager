@@ -893,6 +893,7 @@ export const strings = {
         searchHint: 'Name or phone number. Walk-in sales can skip this.',
         results: 'Matching customers',
         noMatches: (q: string) => `No customers match “${q}”.`,
+        searching: 'Searching your customers…',
         searchFailed: 'We couldn’t search your customers.',
         add: 'New customer',
         change: 'Change customer',
@@ -908,6 +909,10 @@ export const strings = {
         search: 'Product or item name',
         searchHint: 'Search your products, or type a name for a one-off item.',
         results: 'Matching products',
+        searching: 'Searching your products…',
+        noProducts: (q: string) => `No products match “${q}”. It will be saved as a one-off item.`,
+        searchFailed:
+          'We couldn’t search your products. You can still type a one-off item and its price.',
         newProduct: 'New product',
         change: 'Change product',
         chosen: (name: string) => `Product: ${name}`,
